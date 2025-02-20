@@ -7,6 +7,83 @@ from streamlit_modal import Modal
 
 st.set_page_config(page_title="Team Activity Dashboard", layout="wide")
 
+# --- STYLING ---
+st.markdown(
+    """
+    <style>
+        .header-box {
+            background-color: #182c61;
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            text-align: center;
+            font-size: 30px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .corner-accent::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background-color: #182c61;
+            clip-path: polygon(100% 0, 0 0, 100% 100%);
+        }
+        .subheader-box {
+            background-color: #1e3799;
+            padding: 10px;
+            border-radius: 8px;
+            color: white;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .metric-box {
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .metric-box h3 {
+            margin: 0;
+            font-size: 20px;
+            color: #182c61;
+        }
+        .metric-box p {
+            margin: 0;
+            font-size: 16px;
+            color: #1e3799;
+        }
+        .alert-box {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+    </style>
+    <div class='corner-accent'></div>
+    <div class='header-box'>📌 Team Activity Dashboard</div>
+    """,
+    unsafe_allow_html=True
+)
+
+# --- COUNTDOWN TO EOM & EOY ---
+today = datetime.date.today()
+end_of_month = datetime.date(today.year, today.month + 1, 1) - datetime.timedelta(days=1) if today.month < 12 else datetime.date(today.year, 12, 31)
+end_of_year = datetime.date(today.year, 12, 31)
+
+days_to_eom = (end_of_month - today).days
+days_to_eoy = (end_of_year - today).days
+
+col1, col2 = st.columns(2)
+col1.markdown(f"<div class='metric-box'><h3>Days to End of Month</h3><p>{days_to_eom}</p></div>", unsafe_allow_html=True)
+col2.markdown(f"<div class='metric-box'><h3>Days to End of Year</h3><p>{days_to_eoy}</p></div>", unsafe_allow_html=True)
+
 
 TASK_FILE = "task.csv"  # Define the CSV file path
 
@@ -23,6 +100,10 @@ def save_tasks(df):
 # Load task data
 tasks_df = load_tasks()
 
+# Ensure dates are in datetime format
+tasks_df["start_date"] = pd.to_datetime(tasks_df["start_date"], errors="coerce").dt.date
+tasks_df["due_date"] = pd.to_datetime(tasks_df["due_date"], errors="coerce").dt.date
+
 # Expand multiple units
 def expand_units(df):
     expanded_rows = []
@@ -37,7 +118,7 @@ def expand_units(df):
 tasks_expanded_df = expand_units(tasks_df)
 
 # --- TOP ROW WITH METRICS ---
-st.subheader("📊 Task Overview")
+st.markdown("<div class='subheader-box'>📊 Task Overview</div>", unsafe_allow_html=True)
 col1, col2, col3, col4 = st.columns(4)
 
 # Task status count
@@ -47,13 +128,13 @@ completed = status_counts.get("Completed", 0)
 in_progress = status_counts.get("In Progress", 0)
 not_started = status_counts.get("Not Started", 0)
 
-col1.metric("📌 Total Tasks", total_tasks)
-col2.metric("✅ Completed", completed)
-col3.metric("⚙️ In Progress", in_progress)
-col4.metric("🚧 Not Started", not_started)
+col1.markdown(f"<div class='metric-box'><h3>📌 Total Tasks</h3><p>{total_tasks}</p></div>", unsafe_allow_html=True)
+col2.markdown(f"<div class='metric-box'><h3>✅ Completed</h3><p>{completed}</p></div>", unsafe_allow_html=True)
+col3.markdown(f"<div class='metric-box'><h3>⚙️ In Progress</h3><p>{in_progress}</p></div>", unsafe_allow_html=True)
+col4.markdown(f"<div class='metric-box'><h3>🚧 Not Started</h3><p>{not_started}</p></div>", unsafe_allow_html=True)
 
 # --- GRAPHS ---
-st.subheader("📈 Task Statistics")
+st.markdown("<div class='subheader-box'>📈 Task Statistics</div>", unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 
 # 📊 Pie Chart - Task Distribution
@@ -85,7 +166,48 @@ fig_bar = px.bar(
 
 col2.plotly_chart(fig_bar, use_container_width=True)
 
+# --- ALERT SECTION ---
+today = datetime.date.today()
+one_week_from_now = today + datetime.timedelta(days=7)
 
+# Count tasks close to deadline
+close_to_deadline_df = tasks_df[
+    (tasks_df["due_date"] >= today) & 
+    (tasks_df["due_date"] <= one_week_from_now) & 
+    (tasks_df["status"].isin(["Not Started", "In Progress"]))
+]
+close_to_deadline = close_to_deadline_df.shape[0]
+
+# Count overdue tasks
+overdue_tasks_df = tasks_df[
+    (tasks_df["due_date"] < today) & 
+    (tasks_df["status"] != "Completed")
+]
+overdue_tasks = overdue_tasks_df.shape[0]
+
+# Count unconfirmed tasks
+unconfirmed_tasks_df = tasks_df[
+    (tasks_df["assigned_unit"].isna() | tasks_df["due_date"].isna()) & 
+    (tasks_df["status"] != "Completed")
+]
+unconfirmed_tasks = unconfirmed_tasks_df.shape[0]
+
+# Generate alert message
+close_to_deadline_tasks = "<br>".join([f"{row['task_name']} ({row['assigned_unit']})" for _, row in close_to_deadline_df.iterrows()])
+overdue_tasks_list = "<br>".join([f"{row['task_name']} ({row['assigned_unit']})" for _, row in overdue_tasks_df.iterrows()])
+unconfirmed_tasks_list = "<br>".join([f"{row['task_name']} ({row['assigned_unit']})" for _, row in unconfirmed_tasks_df.iterrows()])
+
+st.markdown(f"""
+    <div class='alert-box'>
+        <strong>⚠️ Alert:</strong><br>
+        <strong>Tasks close to deadline:</strong> {close_to_deadline}<br>
+        {close_to_deadline_tasks if close_to_deadline_tasks else "None"}<br><br>
+        <strong>Overdue tasks:</strong> {overdue_tasks}<br>
+        {overdue_tasks_list if overdue_tasks_list else "None"}<br><br>
+        <strong>Unconfirmed tasks (Please add Assigned Unit and Due Date):</strong> {unconfirmed_tasks}<br>
+        {unconfirmed_tasks_list if unconfirmed_tasks_list else "None"}
+    </div>
+""", unsafe_allow_html=True)
 
 # --- FILTER SECTION ---
 st.sidebar.header("🔎 Filter Tasks")
@@ -185,25 +307,22 @@ filtered_df["status_order"] = filtered_df["status"].map(status_order)
 filtered_df = filtered_df.sort_values(by=["status_order", "id"]).drop(columns=["status_order"])
 # --- TASK LIST TABLE ---
 def render_task_table(filtered_df):
-    st.write("### 📋 Task List")
-    
-    col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 2, 1])
+    st.markdown("<div class='subheader-box'>📋 Task List</div>", unsafe_allow_html=True)
+    col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 1])
     col1.write("**Task Name**")
     col2.write("**Assigned Unit**")
-    col3.write("**Start Date**")
-    col4.write("**Due Date**")
-    col5.write("**Status**")
-    col6.write("**Actions**")
+    col3.write("**Due Date**")
+    col4.write("**Status**")
+    col5.write("**Actions**")
 
     for _, task in filtered_df.iterrows():
-        col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 2, 1])
+        col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 1])
         col1.write(task["task_name"])
         col2.write(task["assigned_unit"])
-        col3.write(task["start_date"])
-        col4.write(task["due_date"])
-        col5.write(task["status"])
+        col3.write(task["due_date"])
+        col4.write(task["status"])
         
-        action_button = col6.button("Details", key=f"btn_{task['id']}")
+        action_button = col5.button("Details", key=f"btn_{task['id']}")
         if action_button:
             show_task_details(task)
 
@@ -213,9 +332,7 @@ render_task_table(filtered_df)
 from datetime import datetime
 
 # 📅 Gantt Chart - Task Timeline
-st.subheader("📅 Task Timeline")
-
-# Sort by status order and then by id
+st.markdown("<div class='subheader-box'>📅 Task Timeline</div>", unsafe_allow_html=True)
 
 fig_gantt = px.timeline(
     filtered_df,
@@ -227,6 +344,14 @@ fig_gantt = px.timeline(
     labels={"task_name": "Task", "start_date": "Start", "due_date": "Due"},
 )
 
+# Make the Y-axis scrollable if too many tasks
+fig_gantt.update_layout(
+    showlegend=False,
+    xaxis=dict(tickfont=dict(size=10)),
+    margin=dict(l=10, r=10, t=30, b=30),
+    yaxis=dict(side="left", automargin=True),  # Adjust left margin dynamically
+)
+
 fig_gantt.update_yaxes(categoryorder="total ascending")  # Order tasks chronologically
 fig_gantt.update_layout(showlegend=False)  # Hide legend since every task has a unique color
 
@@ -235,8 +360,6 @@ today = datetime.today().strftime('%Y-%m-%d')  # Get today's date
 fig_gantt.add_vline(x=today, line_width=2, line_dash="dash", line_color="red")  # Red dashed line
 
 st.plotly_chart(fig_gantt, use_container_width=True)
-
-
 
 # --- ADD TASK FORM ---
 if st.button("➕ Add Task"):
