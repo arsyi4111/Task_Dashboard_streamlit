@@ -7,6 +7,7 @@ from streamlit_modal import Modal
 
 st.set_page_config(page_title="Team Activity Dashboard", layout="wide")
 
+
 TASK_FILE = "task.csv"  # Define the CSV file path
 
 # --- LOAD & SAVE TASKS ---
@@ -88,21 +89,23 @@ col2.plotly_chart(fig_bar, use_container_width=True)
 
 # --- FILTER SECTION ---
 st.sidebar.header("🔎 Filter Tasks")
+
+# Search bar for task name
+search_query = st.sidebar.text_input("Search Task Name", "")
+
+# Multiselect for status filter
 status_filter = st.sidebar.multiselect("Filter by Status", options=tasks_df["status"].unique(), default=tasks_df["status"].unique())
 
+# Multiselect for unit filter
 distinct_units = sorted(set(tasks_expanded_df["expanded_unit"].unique()))
 unit_filter = st.sidebar.multiselect("Filter by Assigned Unit", options=distinct_units, default=distinct_units)
 
-status_order = {"Not Started": 0, "In Progress": 1, "Completed": 2}
-
 # Apply filters
 filtered_df = tasks_df[
-    (tasks_df["status"].isin(status_filter)) &
-    (tasks_df["assigned_unit"].apply(lambda x: any(unit in x for unit in unit_filter)))
+    (tasks_df["status"].isin(status_filter)) & 
+    (tasks_df["assigned_unit"].apply(lambda x: any(unit in x for unit in unit_filter))) & 
+    (tasks_df["task_name"].str.contains(search_query, case=False, na=False))  # Case-insensitive search
 ]
-
-filtered_df["status_order"] = filtered_df["status"].map(status_order)
-filtered_df = filtered_df.sort_values(by=["status_order", "id"]).drop(columns=["status_order"])
 
 import datetime
 import plotly.express as px
@@ -112,7 +115,7 @@ filtered_df["start_date"] = pd.to_datetime(filtered_df["start_date"], errors="co
 filtered_df["due_date"] = pd.to_datetime(filtered_df["due_date"], errors="coerce")
 
 # Replace missing start dates with today's date
-filtered_df["start_date"].fillna(pd.Timestamp.today(), inplace=True)
+filtered_df["start_date"].fillna(pd.Timestamp(year=2025, month=2, day=1), inplace=True)
 
 # Replace missing due dates with None (so it appears as ongoing)
 filtered_df["due_date"] = filtered_df["due_date"].apply(lambda x: x if pd.notna(x) else None)
@@ -135,6 +138,7 @@ subtasks_df["end_date"] = pd.to_datetime(subtasks_df["end_date"], errors="coerce
 
 # --- TASK DETAILS MODAL ---
 def show_task_details(task):
+    
     modal = Modal("Task Details", key=f"modal_{task['id']}")
     with modal.container():
         st.write(f"**Task Name:** {task['task_name']}")
@@ -176,7 +180,9 @@ def show_task_details(task):
         else:
             st.write("No subtasks available for this task.")
 
-
+status_order = {"Not Started": 2, "In Progress": 1, "Completed": 0}
+filtered_df["status_order"] = filtered_df["status"].map(status_order)
+filtered_df = filtered_df.sort_values(by=["status_order", "id"]).drop(columns=["status_order"])
 # --- TASK LIST TABLE ---
 def render_task_table(filtered_df):
     st.write("### 📋 Task List")
@@ -204,8 +210,12 @@ def render_task_table(filtered_df):
 # Render Task Table
 render_task_table(filtered_df)
 
+from datetime import datetime
+
 # 📅 Gantt Chart - Task Timeline
 st.subheader("📅 Task Timeline")
+
+# Sort by status order and then by id
 
 fig_gantt = px.timeline(
     filtered_df,
@@ -220,7 +230,12 @@ fig_gantt = px.timeline(
 fig_gantt.update_yaxes(categoryorder="total ascending")  # Order tasks chronologically
 fig_gantt.update_layout(showlegend=False)  # Hide legend since every task has a unique color
 
+# Add a vertical line for today's date
+today = datetime.today().strftime('%Y-%m-%d')  # Get today's date
+fig_gantt.add_vline(x=today, line_width=2, line_dash="dash", line_color="red")  # Red dashed line
+
 st.plotly_chart(fig_gantt, use_container_width=True)
+
 
 
 # --- ADD TASK FORM ---
