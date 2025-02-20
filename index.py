@@ -7,6 +7,30 @@ from streamlit_modal import Modal
 
 st.set_page_config(page_title="Team Activity Dashboard", layout="wide")
 
+import base64
+
+# Function to encode image to Base64
+def get_base64_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode()
+
+# Get Base64 version of the background image
+bg_image_base64 = get_base64_image("element/pospay_bg.webp")
+
+# Apply background using CSS
+st.markdown(f"""
+    <style>
+    body {{
+        background-image: url("data:image/webp;base64,{bg_image_base64}");
+        background-size: 50%;
+        background-position: center top;  /* Align the image */
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        opacity: 0.9;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
 # --- STYLING ---
 st.markdown(
     """
