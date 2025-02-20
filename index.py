@@ -114,14 +114,14 @@ def show_task_details(task):
         st.write("### ✅ Completed Activities")
         completed_activities = task["completed_activities"]
         if completed_activities:
-            st.markdown(completed_activities.replace('\n', '<br>'), unsafe_allow_html=True)
+            st.markdown(completed_activities, unsafe_allow_html=True)
         else:
             st.write("None")
 
         st.write("### ⏳ Pending Activities")
         pending_activities = task["pending_activities"]
         if pending_activities:
-            st.markdown(pending_activities.replace('\n', '<br>'), unsafe_allow_html=True)
+            st.markdown(pending_activities, unsafe_allow_html=True)
         else:
             st.write("None")
 
