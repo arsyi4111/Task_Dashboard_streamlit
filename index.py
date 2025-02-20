@@ -84,6 +84,8 @@ fig_bar = px.bar(
 
 col2.plotly_chart(fig_bar, use_container_width=True)
 
+
+
 # --- FILTER SECTION ---
 st.sidebar.header("🔎 Filter Tasks")
 status_filter = st.sidebar.multiselect("Filter by Status", options=tasks_df["status"].unique(), default=tasks_df["status"].unique())
@@ -102,28 +104,78 @@ filtered_df = tasks_df[
 filtered_df["status_order"] = filtered_df["status"].map(status_order)
 filtered_df = filtered_df.sort_values(by=["status_order", "id"]).drop(columns=["status_order"])
 
+import datetime
+import plotly.express as px
+
+# Ensure dates are in datetime format and handle missing values
+filtered_df["start_date"] = pd.to_datetime(filtered_df["start_date"], errors="coerce")
+filtered_df["due_date"] = pd.to_datetime(filtered_df["due_date"], errors="coerce")
+
+# Replace missing start dates with today's date
+filtered_df["start_date"].fillna(pd.Timestamp.today(), inplace=True)
+
+# Replace missing due dates with None (so it appears as ongoing)
+filtered_df["due_date"] = filtered_df["due_date"].apply(lambda x: x if pd.notna(x) else None)
+
 # --- TASK DETAILS ---
+# --- LOAD SUBTASKS ---
+SUBTASK_FILE = "subtask.csv"
+
+def load_subtasks():
+    if os.path.exists(SUBTASK_FILE):
+        return pd.read_csv(SUBTASK_FILE)
+    else:
+        return pd.DataFrame(columns=["id", "task_id", "sub_task", "start_date", "end_date"])
+
+subtasks_df = load_subtasks()
+
+# Ensure dates are in datetime format
+subtasks_df["start_date"] = pd.to_datetime(subtasks_df["start_date"], errors="coerce")
+subtasks_df["end_date"] = pd.to_datetime(subtasks_df["end_date"], errors="coerce")
+
+# --- TASK DETAILS MODAL ---
 def show_task_details(task):
     modal = Modal("Task Details", key=f"modal_{task['id']}")
     with modal.container():
         st.write(f"**Task Name:** {task['task_name']}")
         st.write(f"**Assigned Unit:** {task['assigned_unit']}")
-        st.write(f"**Start Date:** {task['start_date']}")
-        st.write(f"**Due Date:** {task['due_date']}")
-        
+        st.write(f"**Start Date:** {task['start_date'].strftime('%d/%m/%Y')}")
+        st.write(f"**Due Date:** {task['due_date'].strftime('%d/%m/%Y') if pd.notna(task['due_date']) else 'Ongoing'}")
+
+        # ✅ Completed & Pending Activities
         st.write("### ✅ Completed Activities")
         completed_activities = task["completed_activities"]
-        if completed_activities:
-            st.markdown(completed_activities, unsafe_allow_html=True)
-        else:
-            st.write("None")
+        st.markdown(completed_activities if completed_activities else "None", unsafe_allow_html=True)
 
         st.write("### ⏳ Pending Activities")
         pending_activities = task["pending_activities"]
-        if pending_activities:
-            st.markdown(pending_activities, unsafe_allow_html=True)
+        st.markdown(pending_activities if pending_activities else "None", unsafe_allow_html=True)
+
+        # 📅 Subtask Gantt Chart
+        st.write("### 📅 Subtask Timeline")
+        task_subtasks = subtasks_df[subtasks_df["task_id"] == task["id"]]
+
+        if not task_subtasks.empty:
+            task_subtasks["start_date"] = task_subtasks["start_date"].dt.strftime('%d/%m/%Y')
+            task_subtasks["end_date"] = task_subtasks["end_date"].dt.strftime('%d/%m/%Y')
+
+            fig_sub_gantt = px.timeline(
+                task_subtasks,
+                x_start="start_date",
+                x_end="end_date",
+                y="sub_task",
+                color="sub_task",
+                title="Subtask Timelines",
+                labels={"sub_task": "Subtask", "start_date": "Start", "end_date": "End"},
+            )
+
+            fig_sub_gantt.update_yaxes(categoryorder="total ascending")
+            fig_sub_gantt.update_layout(showlegend=False)
+
+            st.plotly_chart(fig_sub_gantt, use_container_width=True)
         else:
-            st.write("None")
+            st.write("No subtasks available for this task.")
+
 
 # --- TASK LIST TABLE ---
 def render_task_table(filtered_df):
@@ -151,6 +203,25 @@ def render_task_table(filtered_df):
 
 # Render Task Table
 render_task_table(filtered_df)
+
+# 📅 Gantt Chart - Task Timeline
+st.subheader("📅 Task Timeline")
+
+fig_gantt = px.timeline(
+    filtered_df,
+    x_start="start_date",
+    x_end="due_date",
+    y="task_name",
+    color="task_name",  # Assign unique colors to each task
+    title="Task Timelines",
+    labels={"task_name": "Task", "start_date": "Start", "due_date": "Due"},
+)
+
+fig_gantt.update_yaxes(categoryorder="total ascending")  # Order tasks chronologically
+fig_gantt.update_layout(showlegend=False)  # Hide legend since every task has a unique color
+
+st.plotly_chart(fig_gantt, use_container_width=True)
+
 
 # --- ADD TASK FORM ---
 if st.button("➕ Add Task"):
