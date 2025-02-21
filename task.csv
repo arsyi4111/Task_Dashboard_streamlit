@@ -1,5 +1,5 @@
 id,task_name,assigned_unit,start_date,due_date,status,last_update,completed_activities,pending_activities
-10,Program merchandise Pos di Pospay,Not Assigned,,,Not Started,,,
+10,Program merchandise Pos di Pospay,Payment,,,Not Started,,,
 13,Tindak lanjut pertemuan dengan BSI,Resya & MCFS,,31/3/2025,In Progress,,"1. Penjadwalan Ulang dengan Tim Tekhnis BSI.<br>
 2. API remittance sudah dikirimkan ke tim BSI""","1.  Pertemuan untuk pembahasan skema KLG yang baru.<br>2.  Pertemuan pembahasan Layanan Tabungan Syariah , CICO
  <br>3. TO Remittance BSI , Februari 2025
