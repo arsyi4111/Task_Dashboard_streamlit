@@ -1,5 +1,5 @@
 id,task_name,assigned_unit,start_date,due_date,status,last_update,completed_activities,pending_activities
-10,Mendorong percepatan pembuatan Proyek Bisnis PIP,Fund Distribution,4/2/2025,30/3/2025,Not Started,,,
+10,Mendorong percepatan pembuatan Proyek Bisnis PIP,Fund Distribution,4/2/2025,30/3/2025,In Progress,,,
 13,Mendorong percepatan pembuatan Proyek Bisnis Prisma,Payment,4/2/2025,28/2/2025,In Progress,,"1. Rapat Koordinasi dengan Direktorat Business Development dan Divisi Regulasi
 2. Rapat Koordinasi Lintas dengan Fungsi terkait (Divisi Legal, Div Regulasi, Div Risk Management, Div Product Management, Div Digital Giro, Div Policy Finance)
 3. Koordinasi dengan Dit HC terkait KD Proyek Bisnis Pembiayaan UMKM
@@ -27,11 +27,11 @@ Kegiatan ramadhan BTL:
 3. Meeting online dengan SAKTI (19-02-2025)","1. Drafting NDA Pos x Sakti
 2. Pendataan Koperasi-koperasi yang ada di PosIND Group"
 11,Tindak lanjut dari issue racing (program racing tetap perlu dijalankan),Payment & Fronting & Resya,4/2/2025,31/3/2025,In Progress,,Berkoordinasi dengan Direktur Pendidikan Dasar dan Direktur PAUD,"Audiensi dengan Dir PAUD n team hari Kamis, tanggal 20 Februari 2025"
-5,Program merchandise Pos di Pospay,Payment,,,In Progress,,"1. Koordinasi lanjutan, dengan membuatkan link berisi format Racing All divisi, untuk dilakukan rapat internal di HC. 
+5,Program merchandise Pos di Pospay,Payment,,,Not Started,,"1. Koordinasi lanjutan, dengan membuatkan link berisi format Racing All divisi, untuk dilakukan rapat internal di HC. 
 2. Racing di Fronting Business yang diadakan Racing Kresun via Pospay (KCU-KC dengan VoA tertinggi), 
 3. Racing Imbal Jasa 1,5% kepada Juru Bayar, Staff di KCU-KC, dan BM yang mereferalkan pencairan kresun via Pospay, 
 4. Racing Racing Sprint Rally BTN, dan Racing Asuransi Sunday (Petugas Oranger yang mampu menjual 3 premi asuransi/hari atau 75 premi asuransi/bulan dan Racing KCU-KC yang mampu menjual akumulasi premi asuransi tertinggi minimal Rp20 juta/bulan)","Membuatkan surat tanggapan BAK kepada BPJS TK bahwa racing dapat terus berjalan, dengan peserta racing adalah mitra Pos ( Oranger loket, Kanvasing dan Pospay Agen )"
-6,Tindak lanjut pertemuan dengan bank victoria,Fronting,13/2/2025,,Not Started,,,
+6,Tindak lanjut pertemuan dengan bank victoria,Fronting,13/2/2025,,In Progress,,,
 7,Tindak lanjut pertemuan dengan bank muamalat,Resya & DGPS,,13/3/2025,In Progress,,"Akan dilakukan pertemuan lanjutan (waktu menyusul, PIC Bank Victoria : Suheiri & Sheila Chang",
 8,Tindak lanjut pertemuan dengan BSI,Resya & MCFS,17/2/2025,31/3/2025,In Progress,,"Pembahasan journey customer, penyiapan environment developtmen, spek teknis","analisis apakah dibutuhkan EKTP Reader?
 Monitoring proses developtment"
