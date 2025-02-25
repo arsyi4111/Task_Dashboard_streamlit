@@ -125,8 +125,8 @@ def save_tasks(df):
 tasks_df = load_tasks()
 
 # Ensure dates are in datetime format
-tasks_df["start_date"] = pd.to_datetime(tasks_df["start_date"], errors="coerce").dt.date
-tasks_df["due_date"] = pd.to_datetime(tasks_df["due_date"], errors="coerce").dt.date
+tasks_df["start_date"] = pd.to_datetime(tasks_df["start_date"], errors="coerce",dayfirst=True).dt.date
+tasks_df["due_date"] = pd.to_datetime(tasks_df["due_date"], errors="coerce",dayfirst=True).dt.date
 
 # Expand multiple units
 def expand_units(df):
@@ -196,15 +196,15 @@ one_week_from_now = today + datetime.timedelta(days=7)
 
 # Count tasks close to deadline
 close_to_deadline_df = tasks_df[
-    (tasks_df["due_date"] >= today) & 
-    (tasks_df["due_date"] <= one_week_from_now) & 
+    (pd.to_datetime(tasks_df["due_date"], dayfirst=True).dt.date >= today) & 
+    (pd.to_datetime(tasks_df["due_date"], dayfirst=True).dt.date <= one_week_from_now) & 
     (tasks_df["status"].isin(["Not Started", "In Progress"]))
 ]
 close_to_deadline = close_to_deadline_df.shape[0]
 
 # Count overdue tasks
 overdue_tasks_df = tasks_df[
-    (tasks_df["due_date"] < today) & 
+    (pd.to_datetime(tasks_df["due_date"], dayfirst=True).dt.date < today) & 
     (tasks_df["status"] != "Completed")
 ]
 overdue_tasks = overdue_tasks_df.shape[0]
@@ -257,8 +257,8 @@ import datetime
 import plotly.express as px
 
 # Ensure dates are in datetime format and handle missing values
-filtered_df["start_date"] = pd.to_datetime(filtered_df["start_date"], errors="coerce")
-filtered_df["due_date"] = pd.to_datetime(filtered_df["due_date"], errors="coerce")
+filtered_df["start_date"] = pd.to_datetime(filtered_df["start_date"], errors="coerce",dayfirst=True)
+filtered_df["due_date"] = pd.to_datetime(filtered_df["due_date"], errors="coerce",dayfirst=True)
 
 # Replace missing start dates with today's date
 filtered_df["start_date"].fillna(pd.Timestamp(year=2025, month=2, day=1), inplace=True)
@@ -279,8 +279,8 @@ def load_subtasks():
 subtasks_df = load_subtasks()
 
 # Ensure dates are in datetime format
-subtasks_df["start_date"] = pd.to_datetime(subtasks_df["start_date"], errors="coerce")
-subtasks_df["end_date"] = pd.to_datetime(subtasks_df["end_date"], errors="coerce")
+subtasks_df["start_date"] = pd.to_datetime(subtasks_df["start_date"], errors="coerce",dayfirst=True)
+subtasks_df["end_date"] = pd.to_datetime(subtasks_df["end_date"], errors="coerce",dayfirst=True)
 
 # --- TASK DETAILS MODAL ---
 def show_task_details(task):
@@ -290,7 +290,7 @@ def show_task_details(task):
         st.write(f"**Task Name:** {task['task_name']}")
         st.write(f"**Assigned Unit:** {task['assigned_unit']}")
         st.write(f"**Start Date:** {task['start_date'].strftime('%d/%m/%Y')}")
-        st.write(f"**Due Date:** {task['due_date'].strftime('%d/%m/%Y') if pd.notna(task['due_date']) else 'Ongoing'}")
+        st.write(f"**Due Date:** {task['due_date'].strftime('%d/%m/%Y') if pd.notna(task['due_date']) else 'TBC'}")
 
         # ✅ Completed & Pending Activities
         st.write("### ✅ Completed Activities")
@@ -343,8 +343,18 @@ def render_task_table(filtered_df):
         col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 1])
         col1.write(task["task_name"])
         col2.write(task["assigned_unit"])
-        col3.write(task["due_date"])
-        col4.write(task["status"])
+        
+        # Format due date
+        due_date = pd.to_datetime(task["due_date"], dayfirst=True).strftime('%d %B %Y') if pd.notna(task["due_date"]) else "TBC"
+        col3.write(due_date)
+        
+        # Color status
+        status_color = {
+            "Completed": "green",
+            "In Progress": "orange",
+            "Not Started": "red"
+        }.get(task["status"], "black")
+        col4.markdown(f"<span style='color:{status_color}'>{task['status']}</span>", unsafe_allow_html=True)
         
         action_button = col5.button("Details", key=f"btn_{task['id']}")
         if action_button:
