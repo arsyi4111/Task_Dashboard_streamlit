@@ -1,13 +1,35 @@
 import streamlit as st
 import pandas as pd
+import psycopg2
 import datetime
 import os
 import plotly.express as px
 from streamlit_modal import Modal
+import base64
 
 st.set_page_config(page_title="Team Activity Dashboard", layout="wide")
 
-import base64
+# Database connection settings
+DB_HOST = st.secrets["DB_HOST"]
+DB_NAME = st.secrets["DB_NAME"]
+DB_USER = st.secrets["DB_USER"]
+DB_PASS = st.secrets["DB_PASS"]
+
+def connect_db():
+    return psycopg2.connect(
+        host=DB_HOST,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASS
+    )
+
+def load_tasks():
+    conn = connect_db()
+    query = "SELECT * FROM tasks;"
+    df = pd.read_sql(query, conn)
+    conn.close()
+    return df
+
 
 # Function to encode image to Base64
 def get_base64_image(image_path):
@@ -109,17 +131,17 @@ col1.markdown(f"<div class='metric-box'><h3>Days to End of Month</h3><p>{days_to
 col2.markdown(f"<div class='metric-box'><h3>Days to End of Year</h3><p>{days_to_eoy}</p></div>", unsafe_allow_html=True)
 
 
-TASK_FILE = "task.csv"  # Define the CSV file path
+# TASK_FILE = "task.csv"  # Define the CSV file path
 
 # --- LOAD & SAVE TASKS ---
-def load_tasks():
-    if os.path.exists(TASK_FILE):
-        return pd.read_csv(TASK_FILE)
-    else:
-        return pd.DataFrame(columns=["id", "task_name", "assigned_unit", "start_date", "due_date", "status", "completed_activities", "pending_activities"])
+# def load_tasks():
+#     if os.path.exists(TASK_FILE):
+#         return pd.read_csv(TASK_FILE)
+#     else:
+#         return pd.DataFrame(columns=["id", "task_name", "assigned_unit", "start_date", "due_date", "status","follow_up", "completed_activities", "pending_activities"])
 
-def save_tasks(df):
-    df.to_csv(TASK_FILE, index=False)
+# def save_tasks(df):
+#     df.to_csv(TASK_FILE, index=False)
 
 # Load task data
 tasks_df = load_tasks()
@@ -217,7 +239,7 @@ unconfirmed_tasks_df = tasks_df[
 unconfirmed_tasks = unconfirmed_tasks_df.shape[0]
 
 # Generate alert message
-close_to_deadline_tasks = "<br>".join([f"{row['task_name']} ({row['assigned_unit']})" for _, row in close_to_deadline_df.iterrows()])
+close_to_deadline_tasks = "<br>".join([f"{row['task_name']} ({row['assigned_unit']}) ({row['status']}) ({row['due_date']})" for _, row in close_to_deadline_df.iterrows()])
 overdue_tasks_list = "<br>".join([f"{row['task_name']} ({row['assigned_unit']})" for _, row in overdue_tasks_df.iterrows()])
 unconfirmed_tasks_list = "<br>".join([f"{row['task_name']} ({row['assigned_unit']})" for _, row in unconfirmed_tasks_df.iterrows()])
 
@@ -284,31 +306,27 @@ subtasks_df["end_date"] = pd.to_datetime(subtasks_df["end_date"], errors="coerce
 
 # --- TASK DETAILS MODAL ---
 def show_task_details(task):
-    
     modal = Modal("Task Details", key=f"modal_{task['id']}")
     with modal.container():
         st.write(f"**Task Name:** {task['task_name']}")
         st.write(f"**Assigned Unit:** {task['assigned_unit']}")
         st.write(f"**Start Date:** {task['start_date'].strftime('%d/%m/%Y')}")
         st.write(f"**Due Date:** {task['due_date'].strftime('%d/%m/%Y') if pd.notna(task['due_date']) else 'TBC'}")
+        st.write(f"**Tindak Lanjut:** {task['follow_up']}")
 
-        # ✅ Completed & Pending Activities
         st.write("### ✅ Completed Activities")
-        completed_activities = task["completed_activities"]
-        st.markdown(completed_activities if completed_activities else "None", unsafe_allow_html=True)
+        st.markdown(task["completed_activities"] if task["completed_activities"] else "None", unsafe_allow_html=True)
 
         st.write("### ⏳ Pending Activities")
-        pending_activities = task["pending_activities"]
-        st.markdown(pending_activities if pending_activities else "None", unsafe_allow_html=True)
+        st.markdown(task["pending_activities"] if task["pending_activities"] else "None", unsafe_allow_html=True)
 
-        # 📅 Subtask Gantt Chart
         st.write("### 📅 Subtask Timeline")
         task_subtasks = subtasks_df[subtasks_df["task_id"] == task["id"]]
-
+        
         if not task_subtasks.empty:
             task_subtasks["start_date"] = task_subtasks["start_date"].dt.strftime('%d/%m/%Y')
             task_subtasks["end_date"] = task_subtasks["end_date"].dt.strftime('%d/%m/%Y')
-
+            
             fig_sub_gantt = px.timeline(
                 task_subtasks,
                 x_start="start_date",
@@ -318,47 +336,108 @@ def show_task_details(task):
                 title="Subtask Timelines",
                 labels={"sub_task": "Subtask", "start_date": "Start", "end_date": "End"},
             )
-
+            
             fig_sub_gantt.update_yaxes(categoryorder="total ascending")
             fig_sub_gantt.update_layout(showlegend=False)
-
+            
             st.plotly_chart(fig_sub_gantt, use_container_width=True)
         else:
             st.write("No subtasks available for this task.")
 
-status_order = {"Not Started": 2, "In Progress": 1, "Completed": 0}
-filtered_df["status_order"] = filtered_df["status"].map(status_order)
-filtered_df = filtered_df.sort_values(by=["status_order", "id"]).drop(columns=["status_order"])
-# --- TASK LIST TABLE ---
+def update_task_in_db(task_id, new_task_name, new_assigned_unit, new_start_date, new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities):
+    # Example SQL query (modify according to your DB schema)
+    query = """
+    UPDATE tasks 
+    SET task_name = %s, assigned_unit = %s, start_date = %s, due_date = %s, status = %s, follow_up = %s, completed_activities = %s, pending_activities = %s
+    WHERE id = %s
+    """
+    values = (new_task_name, new_assigned_unit, new_start_date, new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities, task_id)
+    
+    # Execute the query
+    conn = connect_db()  # Ensure you have a function to get the DB connection
+    cursor = conn.cursor()
+    cursor.execute(query, values)
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+import io
+
+def convert_df_to_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name="Tasks")
+    return output.getvalue()
+
 def render_task_table(filtered_df):
     st.markdown("<div class='subheader-box'>📋 Task List</div>", unsafe_allow_html=True)
-    col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 1])
+    
+    # **📥 Download Buttons**
+    colA, colB, colC = st.columns([1, 1, 1])
+    with colA:
+        csv_data = filtered_df.to_csv(index=False).encode("utf-8")
+        st.download_button(label="📥 Download CSV", data=csv_data, file_name="tasks.csv", mime="text/csv")
+
+    col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 1, 1])
     col1.write("**Task Name**")
     col2.write("**Assigned Unit**")
     col3.write("**Due Date**")
     col4.write("**Status**")
-    col5.write("**Actions**")
+    col5.write("**Details**")
+    col6.write("**Edit**")
+
+    assigned_units = ["Fund Distribution", "Payment", "Fronting", "MCFS", "Resya", "Marketing", "DGPS", "Product Management"]
 
     for _, task in filtered_df.iterrows():
-        col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 1])
+        col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 1, 1])
         col1.write(task["task_name"])
         col2.write(task["assigned_unit"])
         
-        # Format due date
         due_date = pd.to_datetime(task["due_date"], dayfirst=True).strftime('%d %B %Y') if pd.notna(task["due_date"]) else "TBC"
         col3.write(due_date)
         
-        # Color status
-        status_color = {
-            "Completed": "green",
-            "In Progress": "orange",
-            "Not Started": "red"
-        }.get(task["status"], "black")
+        status_color = {"Completed": "green", "In Progress": "orange", "Not Started": "red"}.get(task["status"], "black")
         col4.markdown(f"<span style='color:{status_color}'>{task['status']}</span>", unsafe_allow_html=True)
         
-        action_button = col5.button("Details", key=f"btn_{task['id']}")
-        if action_button:
+        details_button = col5.button("Details", key=f"details_{task['id']}")
+        if details_button:
             show_task_details(task)
+        
+        edit_button = col6.button("✏️ Edit", key=f"edit_{task['id']}")
+        if edit_button:
+            st.session_state[f"edit_mode_{task['id']}"] = True
+
+
+        if st.session_state.get(f"edit_mode_{task['id']}", False):
+            with st.form(key=f"edit_form_{task['id']}"):
+                new_task_name = st.text_input("Task Name", value=task["task_name"])
+                new_assigned_unit = st.selectbox("Assigned Unit", assigned_units, index=assigned_units.index(task["assigned_unit"]))
+                new_start_date = st.date_input("Start Date", value=task["start_date"])
+                new_due_date = st.date_input("Due Date", value=task["due_date"])
+                new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(task["status"]))
+                new_follow_up = st.text_area("Tindak Lanjut", value=task["follow_up"])
+
+                # Add completed & pending activities input
+                new_completed_activities = st.text_area("✅ Completed Activities", value=task.get("completed_activities", ""))
+                new_pending_activities = st.text_area("⏳ Pending Activities", value=task.get("pending_activities", ""))
+
+                colA, colB, colC = st.columns([1, 1,1])
+                with colA:
+                    submitted = st.form_submit_button("Save Changes")
+                with colC:
+                    cancel = st.form_submit_button("Cancel")
+
+                if submitted:
+                    update_task_in_db(
+                        task["id"], new_task_name, new_assigned_unit, new_start_date, 
+                        new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities
+                    )
+                    st.session_state[f"edit_mode_{task['id']}"] = False
+                    st.rerun()
+                
+                if cancel:
+                    st.session_state[f"edit_mode_{task['id']}"] = False
+                    st.rerun()
 
 # Render Task Table
 render_task_table(filtered_df)
@@ -367,6 +446,9 @@ from datetime import datetime
 
 # 📅 Gantt Chart - Task Timeline
 st.markdown("<div class='subheader-box'>📅 Task Timeline</div>", unsafe_allow_html=True)
+
+# Sort the filtered_df by due date before creating the Gantt chart
+filtered_df = filtered_df.sort_values(by=["due_date", "id"], ascending=[False, True])
 
 fig_gantt = px.timeline(
     filtered_df,
@@ -386,7 +468,7 @@ fig_gantt.update_layout(
     yaxis=dict(side="left", automargin=True),  # Adjust left margin dynamically
 )
 
-fig_gantt.update_yaxes(categoryorder="total ascending")  # Order tasks chronologically
+fig_gantt.update_yaxes(categoryorder="total descending")  # Order tasks chronologically
 fig_gantt.update_layout(showlegend=False)  # Hide legend since every task has a unique color
 
 # Add a vertical line for today's date

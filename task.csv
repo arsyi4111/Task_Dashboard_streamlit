@@ -1,5 +1,5 @@
-id,task_name,assigned_unit,start_date,due_date,status,last_update,completed_activities,pending_activities,
-1,Mendorong percepatan pembuatan Proyek Bisnis PIP,Fund Distribution,4/2/2025,30/3/2025,In Progress,,"1. Pembuatan Proposal Proyek Bisnis Pembiayaan UMKM
+id,task_name,assigned_unit,start_date,due_date,status,last_update,follow_up,completed_activities,pending_activities
+1,Mendorong percepatan pembuatan Proyek Bisnis PIP,Fund Distribution,2025-02-04,2025-03-30,In Progress,,"1. Pembuatan Proposal Proyek Bisnis Pembiayaan UMKM
 2. Penyiapan KD Proyek Bisnis","1. Rapat Koordinasi dengan Direktorat Business Development dan Divisi Regulasi
 2. Rapat Koordinasi Lintas dengan Fungsi terkait (Divisi Legal, Div Regulasi, Div Risk Management, Div Product Management, Div Digital Giro, Div Policy Finance)
 3. Koordinasi dengan Dit HC terkait KD Proyek Bisnis Pembiayaan UMKM
@@ -7,10 +7,10 @@ id,task_name,assigned_unit,start_date,due_date,status,last_update,completed_acti
 2. Rapat Koordinasi dengan PIP untuk eksplore terkait model bisnis penyaluran
 3. Pembahasan Draf KD Probis dengan Direktorat HC
 4. Penyiapan Materi Probis Pembiayaan UMKM untuk Ratas BOD"
-2,Mendorong percepatan pembuatan Proyek Bisnis Prisma,Payment,4/2/2025,28/2/2025,Not Started,,Pembuatan Proposal Proyek bisnis Prisma,"1. Membuat Proposal probis Prisma
+2,Mendorong percepatan pembuatan Proyek Bisnis Prisma,Payment,2025-02-04,2025-02-28,In Progress,,Pembuatan Proposal Proyek bisnis Prisma,"1. Membuat Proposal probis Prisma
 2. Koordinasi HC terkait usulan probis Prisma","1. Propose usulan probis di Ratas
 2. Meeting dengan Posfin terkait pengembangan platform prisma hari kamis, 27 Februari 2025"
-3,Persiapkan media promosi dan konten dengan lebih baik untuk acara seperti Ramadan dan Idul Fitri.,Marketing,,28/2/2025,In Progress,,"Kegiatan ramadhan ATL :
+3,Persiapkan media promosi dan konten dengan lebih baik untuk acara seperti Ramadan dan Idul Fitri.,Marketing,,2025-02-28,In Progress,,"Kegiatan ramadhan ATL :
 1. Ramadhan bersama Pospay (kultum 2 menit bersama ustad Erick Yusuf) di Inews TV
 2. Greeting Ramadhan (Inews dan Kompas TV)
 3. Penayangan iklan digital signage di 8 bandara
@@ -24,7 +24,7 @@ Kegiatan ramadhan BTL:
 1. Pembuatan produksi greeting ramadhan
 2. Negosiasi untuk iklan digital signage di 8 bandara
 3. Pembuatan iklan digital signage di 8 bandara"
-4,Tindak lanjut pertemuan dengan link aja,MCFS,24/12/2024,27/2/2025,In Progress,,"Penjajakan kerjasama antara Pos x LinkAja
+4,Tindak lanjut pertemuan dengan link aja,MCFS,2024-12-24,2025-02-27,In Progress,,"Penjajakan kerjasama antara Pos x LinkAja
 1. Cross biller 
 2. Pospay sebagai SoF di MyPertamina; flow via LinkAja sebagai Agregator Payment MyPertamina.
 3. PosAja inApps di LinkAja
@@ -38,30 +38,36 @@ Kegiatan ramadhan BTL:
 2. Pengiriman list biller yang dimiliki oleh PosIND (27-12-2024)
 3. Penyusunan dan pengiriman draft NDA kepihak Link Aja","1. Sirkulir dan finalisasi NDA (duedate 26-02-2025)
 2. Meeting offline untuk pembahasan model bisnis dan teknis (27-02-2025)"
-5,Tindak lanjut pertemuan dengan rektor UT,MCFS,,,In Progress,,Gathering requirement dan diskusi untuk peluang yang dapat dikerjasamakan,Koordinasi dengan EGM KCU Tangerang terkiat peluang kerjasama serta rencana pertemuan dengan tim UT,Pertemuan dengan tim UT hari Jumat tgl 21-02-2025
-6,Tindak lanjut pertemuan dengan Koperasi,PM & MCFS,16/1/2025,,Not Started,,"Kerjasama dengan PT Sakti sebagai penyedia platform Koperasi 
+5,Tindak lanjut pertemuan dengan rektor UT,MCFS,2025-02-25,2025-03-31,In Progress,,Kerjasama dengan Universitas Terbuka untuk penggunaaan Pospay dan Qrispos sebagai metode pembayaran maahasiswa pada platform UT,"1. Koordinasi dengan EGM KCU Tangerang terkiat peluang kerjasama serta rencana pertemuan dengan tim UT
+2. Pertemuan dengan Universitas Terbuka pada tanggal 25-02-2025 yang dihadiri oleh Kapuslaba UT & KaSubDit Digital Sitem Informasi UT, dengan hasil sbb :
+- Terdapat potensi registrasi mahasiswa baru sebanyak 750rb 
+- Saat ini baru terdaftar sebanyak 324rb mahasiswa sehingga masih ada sekitar 425rb calon mahasiswa yg akan mendaftar.
+- Diharapkan ada peran aktif dr Pos untuk membuka loket pembayaran di UT Daerah (UTD) dikarenakan masih banyak mahasiswa yg mendaftar melalui UTD.
+- Selain melalui UTD setempat, registrasi dan layanan lainnya saat ini hanya dilakukan melalui portal web myUT.ut.ac.id (platform myUT versi mobile masih dalam tahap pengembangan)
+- Pospay dapat dijadikan sebagai payment methode di web myUT (QRIS dan Direct Debit)","1. Pengiriman surat ke Reg/KCU/KC untuk pembukaan loket di UTD agar dapat melayani pembayaran dari calon mahasiswa UT (27-02-2025)
+2. PosIND mengirimkan surat penawaran kerjasama kepada rektor UT dalam pelayanan pembayaran mahasiswa (27-02-2025)"
+6,Tindak lanjut pertemuan dengan Koperasi,PM & MCFS,2025-01-16,2025-03-07,Not Started,,"Kerjasama dengan PT Sakti sebagai penyedia platform Koperasi 
 a. Untuk Koperasi, PosInd fokus dalam penawaran kerjasama core bisnis Pos (jasa keuangan/Pospay logistik/kurir) dengan penyedia aplikasi koperasi PT Sakti Kinerja Kolaborasindo (SKK)
 b. Layanan Pos tersedia di Koperasi. Layanan/produk jasa keuangan dan kurir/logistik PosInd dapat menjadi produk/layanan Koperasi yang dibutuhkan koperasi untuk meningkatan pendapatan (kesejahteraan) . 
 c. Secara teknologi layanan digital/aplikasi Pospay dapat terhubung/terkoneksi dengan aplikasi Sakti melalui API (Aplication Programme Interface) yang disepakati untuk saling melengkapi. Contoh produk digital/PPOB, e-Meterai QRIS, layanan Kurir, COD dll
 d. Kerjasama digitalisasi koperasi dilakukan dengan skema bagi hasil (VA/API) giro pos, pospay, agen pos, logistik dll
 ","1. Meeting dengan PIC Sakti (16-01-2025)
 2. Meeting dengan Deputi Kementrian Koperasi (07-02-2025)
-3. Meeting online dengan SAKTI (19-02-2025)","1. Drafting NDA Pos x Sakti
-2. Pendataan Koperasi-koperasi yang ada di PosIND Group"
+3. Meeting online dengan SAKTI (19-02-2025)",2. PosIND mengirimkan surat penawaran kerjasama kepada rektor UT dalam pelayanan pembayaran mahasiswa
 7,Progres kerjasama dengan kemendikdas,Payment & Marketing,,,In Progress,,Kerja sama Gerakan Nasional gemar berkirim surat,"1. Berkoordinasi dengan Direktur Pendidikan Dasar dan Direktur PAUD 12 Februari 2025
 2. Audiensi dengan DIrektorat Paud pada hari kamis 20 Februari 2025
 ","1. Kerjasama dalam pembelajaran literasi dan aktifitas pos yang akan dituangkan dalam sebuah PKS.
-2. ditindaklanjuti dengan pembahasan tekhnis kerjasama"
-8,Tindak lanjut dari issue racing (program racing tetap perlu dijalankan),Payment & Fronting & Resya,4/2/2025,31/3/2025,In Progress,,"Melakukan Koordinasi via Zoom dengan HC, untuk menemukan formulasi KPI peserta racing Unit / Individu organik","1. Koordinasi lanjutan, dengan membuatkan link berisi format Racing All divisi, untuk dilakukan rapat internal di HC. 
+2. ditindaklanjuti dengan pembahasan teknis kerjasama"
+8,Tindak lanjut dari issue racing (program racing tetap perlu dijalankan),Payment & Fronting & Resya,2025-02-04,2025-03-31,In Progress,,"Melakukan Koordinasi via Zoom dengan HC, untuk menemukan formulasi KPI peserta racing Unit / Individu organik","1. Koordinasi lanjutan, dengan membuatkan link berisi format Racing All divisi, untuk dilakukan rapat internal di HC. 
 2. Racing di Fronting Business yang diadakan Racing Kresun via Pospay (KCU-KC dengan VoA tertinggi), 
 3. Racing Imbal Jasa 1,5% kepada Juru Bayar, Staff di KCU-KC, dan BM yang mereferalkan pencairan kresun via Pospay, 
 4. Racing Racing Sprint Rally BTN, dan Racing Asuransi Sunday (Petugas Oranger yang mampu menjual 3 premi asuransi/hari atau 75 premi asuransi/bulan dan Racing KCU-KC yang mampu menjual akumulasi premi asuransi tertinggi minimal Rp20 juta/bulan)","1. melakukan koordinasi lanjutan bersama BPJS TK, terkait racing dengan peserta oranger loket / kemitraan, Pospay Kanvasing dan Pospay Agen tgl 25 Feb 2025. 2. Racing payment 3P dijalankan dengan peserta oranger loket"
-9,Program merchandise Pos di Pospay,Payment,,,Not Started,,,,
-10,Tindak lanjut pertemuan dengan bank victoria,Fronting,13/2/2025,1/7/2025,In Progress,,Bank Victoria tertarik layanan CICO (Cash In Cash Out) di Kantor Pos,"Akan dilakukan pertemuan lanjutan (waktu menyusul, PIC Bank Victoria : Suheiri & Sheila Chang","Telah dilakukan zoom meeting dengan pihak Bank Victoria (cq Ahmad Suheri & Sheilla Chang) pd tngl 25 Feb 2025 (jam 13.30-14.30 wib) dengan hasil sbb : biar ada diversifikasi dengan atm bca, indomaret, dan alfamart, untuk tarik & setor inginnya sebesar Rp2,5/transaksi, maksimum Rp10 jt/sehari (4x transaksi/nasabah), dan Bank Victoria siap untuk Deposit minimal Rp100 jt"
-11,Tindak lanjut pertemuan dengan bank muamalat,Resya & DGPS,,13/3/2025,In Progress,,"Proses development Buka Rek Hajji 
+9,Program merchandise Pos di Pospay,Payment & MCFS,2025-02-04,2025-03-31,Not Started,,Kordinasi dgn produk management dan DS dalam pengambangan aplikasi merchandise. Rencana menggunakan miroside link ke web filateli,Membuat NDE terkait permintaan pembuatan aplikasi penjualan merchandise di pospay. Zoom dgn DS terkait kebutuhan bisnis,
+10,Tindak lanjut pertemuan dengan bank victoria,Fronting,2025-02-13,2025-07-01,In Progress,,Bank Victoria tertarik layanan CICO (Cash In Cash Out) di Kantor Pos,"Akan dilakukan pertemuan lanjutan (waktu menyusul, PIC Bank Victoria : Suheiri & Sheila Chang","Telah dilakukan zoom meeting dengan pihak Bank Victoria (cq Ahmad Suheri & Sheilla Chang) pd tngl 25 Feb 2025 (jam 13.30-14.30 wib) dengan hasil sbb : biar ada diversifikasi dengan atm bca, indomaret, dan alfamart, untuk tarik & setor inginnya sebesar Rp2,5/transaksi, maksimum Rp10 jt/sehari (4x transaksi/nasabah), dan Bank Victoria siap untuk Deposit minimal Rp100 jt"
+11,Tindak lanjut pertemuan dengan bank muamalat,Resya & DGPS,,2025-03-13,In Progress,,"Proses development Buka Rek Hajji 
 -Penjadwalan ulang dengan tim bisnis BMI terkait revenue sharing","Pembahasan journey customer, penyiapan environment developtmen, spek teknis","analisis apakah dibutuhkan EKTP Reader?
 Monitoring proses developtment"
-12,Tindak lanjut pertemuan dengan BSI,Resya & MCFS,17/2/2025,31/3/2025,In Progress,,"-Perhitungan Ulang KLG
+12,Tindak lanjut pertemuan dengan BSI,Resya & MCFS,2025-02-17,2025-03-31,In Progress,,"-Perhitungan Ulang KLG
 -Skema Tabungan Syariah
 -Rekoneksi Remittance Service
 -Cross biller Beyond vs Pospay","Penjadwalan Ulang dengan Tim Tekhnis BSI.
@@ -72,10 +78,10 @@ Monitoring proses developtment"
 13,Isu terkait sponsorship event filateli dengan kementrian kebudayaan,Payment,,,Completed,,"Sudah diselesaikan:
 1. Proposal dari PP PFI oleh Corsec (Info dari Bp Heri Nugrahanto)
 2. Proposal dari PD PFI oleh Div Payment",,
-14,Pengisian job description pada aplikasi Jobman,not assigned,,25/3/2025,In Progress,,,,
-15,Perhitungan biaya operasional pertransaksi BTN di Kantor Pos sebagai dasar pengambilan keputusan BoD,Fronting,31/12/2024,14/4/2025,Not Started,,,,
+14,Pengisian job description pada aplikasi Jobman,not assigned,,2025-03-25,In Progress,,,,
+15,Perhitungan biaya operasional pertransaksi BTN di Kantor Pos sebagai dasar pengambilan keputusan BoD,Fronting,2024-12-31,2025-04-14,Not Started,,Membuat addendum perpanjangan PKS selama 3 bulan (15 Jan - 14 April 2025) karena belum deal imbal jasa revenue sharing,,
 16,Upaya akuisisi nasabah batarapos,Fronting,,,Not Started,,,,
-17,Pastikan single pospay agen berhasil berjalan pada 1 Maret,MCFS & PM,,1/3/2025,In Progress,,,"1. Meeting dengan Posifn, Operasi Jasa Keuangan, Finacial Policy, Akutansi dan Treasury & Tax",
-18,Memastikan kartu ucapan idul fitri sudah dikirimkan ke para mitra paling lambat pada minggu ke dua ramadhan,not assigned,,14/3/2025,Not Started,,,,
+17,Pastikan single pospay agen berhasil berjalan pada 1 Maret,MCFS & PM,,2025-03-01,In Progress,,,"1. Meeting dengan Posifn, Operasi Jasa Keuangan, Finacial Policy, Akutansi dan Treasury & Tax","Tanggal 26 Feb 2025 dilakukan meeting gabungan antara Bisnis, Digital Service dan PosFin terkait persiapan Single Pospay Agen implemetasi 1 Maret 2025"
+18,Memastikan kartu ucapan idul fitri sudah dikirimkan ke para mitra paling lambat pada minggu ke dua ramadhan,not assigned,,2025-03-14,Not Started,,,,
 19,"Membangun platform filateli yang dapat mengakomodir:
-Order > Request desain (interaksi antara pemesan dan desainer) > Percetakan > Pengiriman",Payment,,2/3/2025,In Progress,,Pengembangan sistem order via web Filateli.co.id,pengembangan sistem,sedang proses UAT
+Order > Request desain (interaksi antara pemesan dan desainer) > Percetakan > Pengiriman",Payment,,2025-03-22,In Progress,,Pengembangan sistem order via web Filateli.co.id,pengembangan sistem,sedang proses UAT
