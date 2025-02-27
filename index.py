@@ -370,14 +370,29 @@ def convert_df_to_excel(df):
     return output.getvalue()
 
 def render_task_table(filtered_df):
-    st.markdown("<div class='subheader-box'>📋 Task List</div>", unsafe_allow_html=True)
     
-    # **📥 Download Buttons**
+    st.markdown("<div class='subheader-box'>📋 Task List</div>", unsafe_allow_html=True)
+    # **📥 Download Buttons & Sorting**
     colA, colB, colC = st.columns([1, 1, 1])
     with colA:
         csv_data = filtered_df.to_csv(index=False).encode("utf-8")
         st.download_button(label="📥 Download CSV", data=csv_data, file_name="tasks.csv", mime="text/csv")
+    
+    with colC:
+        sort_option = st.selectbox("Sort by", ["Task Name", "Assigned Unit", "Due Date", "Status"], index=2)
+        
+    # **Apply Sorting**
+    if sort_option == "Task Name":
+        filtered_df = filtered_df.sort_values(by="task_name", ascending=True)
+    elif sort_option == "Assigned Unit":
+        filtered_df = filtered_df.sort_values(by="assigned_unit", ascending=True)
+    elif sort_option == "Due Date":
+        filtered_df = filtered_df.sort_values(by="due_date", ascending=True, na_position="last")
+    elif sort_option == "Status":
+        status_order = {"Not Started": 0, "In Progress": 1, "Completed": 2}
+        filtered_df = filtered_df.sort_values(by="status", key=lambda x: x.map(status_order))
 
+    # **Table Headers**
     col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 1, 1])
     col1.write("**Task Name**")
     col2.write("**Assigned Unit**")
@@ -388,6 +403,7 @@ def render_task_table(filtered_df):
 
     assigned_units = ["Fund Distribution", "Payment", "Fronting", "MCFS", "Resya", "Marketing", "DGPS", "Product Management"]
 
+    # **Render Task Rows**
     for _, task in filtered_df.iterrows():
         col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 1, 1])
         col1.write(task["task_name"])
@@ -407,7 +423,7 @@ def render_task_table(filtered_df):
         if edit_button:
             st.session_state[f"edit_mode_{task['id']}"] = True
 
-
+        # **Edit Form**
         if st.session_state.get(f"edit_mode_{task['id']}", False):
             with st.form(key=f"edit_form_{task['id']}"):
                 new_task_name = st.text_input("Task Name", value=task["task_name"])
@@ -421,7 +437,7 @@ def render_task_table(filtered_df):
                 new_completed_activities = st.text_area("✅ Completed Activities", value=task.get("completed_activities", ""))
                 new_pending_activities = st.text_area("⏳ Pending Activities", value=task.get("pending_activities", ""))
 
-                colA, colB, colC = st.columns([1, 1,1])
+                colA, colB, colC = st.columns([1, 1, 1])
                 with colA:
                     submitted = st.form_submit_button("Save Changes")
                 with colC:
@@ -441,6 +457,7 @@ def render_task_table(filtered_df):
 
 # Render Task Table
 render_task_table(filtered_df)
+
 
 from datetime import datetime
 
