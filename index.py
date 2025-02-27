@@ -6,6 +6,7 @@ import os
 import plotly.express as px
 from streamlit_modal import Modal
 import base64
+from datetime import date
 
 st.set_page_config(page_title="Team Activity Dashboard", layout="wide")
 
@@ -261,12 +262,12 @@ st.sidebar.header("🔎 Filter Tasks")
 # Search bar for task name
 search_query = st.sidebar.text_input("Search Task Name", "")
 
-# Multiselect for status filter
-status_filter = st.sidebar.multiselect("Filter by Status", options=tasks_df["status"].unique(), default=tasks_df["status"].unique())
-
 # Multiselect for unit filter
 distinct_units = sorted(set(tasks_expanded_df["expanded_unit"].unique()))
 unit_filter = st.sidebar.multiselect("Filter by Assigned Unit", options=distinct_units, default=distinct_units)
+
+# Multiselect for status filter
+status_filter = st.sidebar.multiselect("Filter by Status", options=tasks_df["status"].unique(), default=tasks_df["status"].unique())
 
 # Apply filters
 filtered_df = tasks_df[
@@ -361,6 +362,13 @@ def update_task_in_db(task_id, new_task_name, new_assigned_unit, new_start_date,
     cursor.close()
     conn.close()
 
+def execute_db_query(query, values=()):
+    conn = connect_db()  # Update with your actual DB path
+    cursor = conn.cursor()
+    cursor.execute(query, values)
+    conn.commit()
+    conn.close()    
+
 import io
 
 def convert_df_to_excel(df):
@@ -401,7 +409,7 @@ def render_task_table(filtered_df):
     col5.write("**Details**")
     col6.write("**Edit**")
 
-    assigned_units = ["Fund Distribution", "Payment", "Fronting", "MCFS", "Resya", "Marketing", "DGPS", "Product Management"]
+    assigned_units = ["Fund Distribution", "Payment", "Fronting", "MCFS", "Resya", "Marketing", "DGPS", "Product Management","not assigned"]
 
     # **Render Task Rows**
     for _, task in filtered_df.iterrows():
@@ -444,6 +452,7 @@ def render_task_table(filtered_df):
                     cancel = st.form_submit_button("Cancel")
 
                 if submitted:
+
                     update_task_in_db(
                         task["id"], new_task_name, new_assigned_unit, new_start_date, 
                         new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities
@@ -494,28 +503,76 @@ fig_gantt.add_vline(x=today, line_width=2, line_dash="dash", line_color="red")  
 
 st.plotly_chart(fig_gantt, use_container_width=True)
 
-# --- ADD TASK FORM ---
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+def add_task_to_db(task_id, task_name, assigned_unit, start_date, due_date, status, follow_up, completed_activities, pending_activities):
+    query = """
+    INSERT INTO tasks (id, task_name, assigned_unit, start_date, due_date, status, follow_up, completed_activities, pending_activities)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+    values = (task_id, task_name, assigned_unit, start_date, due_date, status, follow_up, completed_activities, pending_activities)
+    
+    # Debugging logs before execution
+    logging.debug(f"Executing Query: {query}")
+    logging.debug(f"Query Values: {values}")
+    
+    execute_db_query(query, values)
+
+# Store state of the form
+if "show_form" not in st.session_state:
+    st.session_state.show_form = False
+
+# Toggle form visibility
 if st.button("➕ Add Task"):
+    st.session_state.show_form = True  # Keep form visible
+
+# Only show the form when needed
+if st.session_state.show_form:
     with st.form("add_task_form", clear_on_submit=True):
         task_name = st.text_input("Task Name")
-        assigned_unit = st.text_input("Assigned Unit (Use ' & ' for multiple units)")
-        start_date = st.date_input("Start Date", datetime.date.today())
-        due_date = st.date_input("Due Date", datetime.date.today())
+        assigned_units = st.multiselect("Assigned Unit", ["Fund Distribution", "Payment", "Fronting", "MCFS", "Resya", "Marketing", "DGPS", "Product Management","not assigned"])
+        assigned_unit_str = " & ".join(assigned_units)  # Join selected units with '&'
+        start_date = st.date_input("Start Date", date.today())
+        due_date = st.date_input("Due Date", date.today())
         status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
+        follow_up = st.text_area("Tindak Lanjut")
+        completed_activities = st.text_area("✅ Completed Activities")
+        pending_activities = st.text_area("⏳ Pending Activities")
         
-        if st.form_submit_button("Add Task"):
+        colA, colB, colC = st.columns([1, 1, 1])
+        with colA:
+            submitted = st.form_submit_button("Add Task")
+        with colC:
+            cancel = st.form_submit_button("Cancel")
+        
+    if submitted:
+        if not task_name.strip():
+            st.error("⚠ Task Name is required!")
+        elif not assigned_units:
+            st.error("⚠ Assigned Unit is required!")
+        else:
+            new_task_id = int(tasks_df["id"].max() + 1) if not tasks_df.empty else 1
+
             new_task = pd.DataFrame([{
-                "id": tasks_df["id"].max() + 1 if not tasks_df.empty else 1,
+                "id": new_task_id,
                 "task_name": task_name,
-                "assigned_unit": assigned_unit,
+                "assigned_unit": assigned_unit_str,
                 "start_date": start_date,
                 "due_date": due_date,
                 "status": status,
-                "completed_activities": "",
-                "pending_activities": ""
+                "follow_up": follow_up,
+                "completed_activities": completed_activities,
+                "pending_activities": pending_activities
             }])
 
-            tasks_df = pd.concat([tasks_df, new_task], ignore_index=True)
-            save_tasks(tasks_df)
-            st.success("Task added successfully!")
-            st.experimental_rerun()
+            # Update database
+            add_task_to_db(new_task_id, task_name, assigned_unit_str, start_date, due_date, status, follow_up, completed_activities, pending_activities)
+            st.success("✅ Task added successfully!")
+            st.session_state.show_form = False
+            st.rerun()
+        
+        if cancel:
+            st.session_state.show_form = False
+            st.rerun()
+
