@@ -24,12 +24,6 @@ def connect_db():
         password=DB_PASS
     )
 
-def load_tasks():
-    conn = connect_db()
-    query = "SELECT * FROM tasks;"
-    df = pd.read_sql(query, conn)
-    conn.close()
-    return df
 
 
 # Function to encode image to Base64
@@ -119,6 +113,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+
 # --- COUNTDOWN TO EOM & EOY ---
 today = datetime.date.today()
 end_of_month = datetime.date(today.year, today.month + 1, 1) - datetime.timedelta(days=1) if today.month < 12 else datetime.date(today.year, 12, 31)
@@ -131,20 +126,13 @@ col1, col2 = st.columns(2)
 col1.markdown(f"<div class='metric-box'><h3>Days to End of Month</h3><p>{days_to_eom}</p></div>", unsafe_allow_html=True)
 col2.markdown(f"<div class='metric-box'><h3>Days to End of Year</h3><p>{days_to_eoy}</p></div>", unsafe_allow_html=True)
 
+def load_tasks():
+    conn = connect_db()
+    query = "SELECT * FROM tasks;"
+    df = pd.read_sql(query, conn)
+    conn.close()
+    return df
 
-# TASK_FILE = "task.csv"  # Define the CSV file path
-
-# --- LOAD & SAVE TASKS ---
-# def load_tasks():
-#     if os.path.exists(TASK_FILE):
-#         return pd.read_csv(TASK_FILE)
-#     else:
-#         return pd.DataFrame(columns=["id", "task_name", "assigned_unit", "start_date", "due_date", "status","follow_up", "completed_activities", "pending_activities"])
-
-# def save_tasks(df):
-#     df.to_csv(TASK_FILE, index=False)
-
-# Load task data
 tasks_df = load_tasks()
 
 # Ensure dates are in datetime format
@@ -431,38 +419,47 @@ def render_task_table(filtered_df):
         if edit_button:
             st.session_state[f"edit_mode_{task['id']}"] = True
 
-        # **Edit Form**
-        if st.session_state.get(f"edit_mode_{task['id']}", False):
-            with st.form(key=f"edit_form_{task['id']}"):
-                new_task_name = st.text_input("Task Name", value=task["task_name"])
-                new_assigned_unit = st.selectbox("Assigned Unit", assigned_units, index=assigned_units.index(task["assigned_unit"]))
-                new_start_date = st.date_input("Start Date", value=task["start_date"])
-                new_due_date = st.date_input("Due Date", value=task["due_date"])
-                new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(task["status"]))
-                new_follow_up = st.text_area("Tindak Lanjut", value=task["follow_up"])
+            if st.session_state.get(f"edit_mode_{task['id']}", False):
+                with st.form(key=f"edit_form_{task['id']}"):
+                    new_task_name = st.text_input("Task Name", value=task["task_name"])
+                    
+                    # Convert "Assigned Unit" string to a list
+                    assigned_units_list = task["assigned_unit"].split(" & ") if task["assigned_unit"] else []
 
-                # Add completed & pending activities input
-                new_completed_activities = st.text_area("✅ Completed Activities", value=task.get("completed_activities", ""))
-                new_pending_activities = st.text_area("⏳ Pending Activities", value=task.get("pending_activities", ""))
+                    # Use multiselect to allow multiple units
+                    new_assigned_unit = st.multiselect("Assigned Unit", assigned_units, default=assigned_units_list)
+                    
+                    # Convert selected units back to string format
+                    new_assigned_unit_str = " & ".join(new_assigned_unit)
 
-                colA, colB, colC = st.columns([1, 1, 1])
-                with colA:
-                    submitted = st.form_submit_button("Save Changes")
-                with colC:
-                    cancel = st.form_submit_button("Cancel")
+                    new_start_date = st.date_input("Start Date", value=task["start_date"])
+                    new_due_date = st.date_input("Due Date", value=task["due_date"])
+                    new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], 
+                                            index=["Not Started", "In Progress", "Completed"].index(task["status"]))
+                    new_follow_up = st.text_area("Tindak Lanjut", value=task["follow_up"])
 
-                if submitted:
+                    # Add completed & pending activities input
+                    new_completed_activities = st.text_area("✅ Completed Activities", value=task.get("completed_activities", ""))
+                    new_pending_activities = st.text_area("⏳ Pending Activities", value=task.get("pending_activities", ""))
 
-                    update_task_in_db(
-                        task["id"], new_task_name, new_assigned_unit, new_start_date, 
-                        new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities
-                    )
-                    st.session_state[f"edit_mode_{task['id']}"] = False
-                    st.rerun()
-                
-                if cancel:
-                    st.session_state[f"edit_mode_{task['id']}"] = False
-                    st.rerun()
+                    colA, colB, colC = st.columns([1, 1, 1])
+                    with colA:
+                        submitted = st.form_submit_button("Save Changes")
+                    with colC:
+                        cancel = st.form_submit_button("Cancel")
+
+                    if submitted:
+                        update_task_in_db(
+                            task["id"], new_task_name, new_assigned_unit_str, new_start_date, 
+                            new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities
+                        )
+                        st.session_state[f"edit_mode_{task['id']}"] = False
+                        st.rerun()
+                    
+                    if cancel:
+                        st.session_state[f"edit_mode_{task['id']}"] = False
+                        st.rerun()
+
 
 # Render Task Table
 render_task_table(filtered_df)
