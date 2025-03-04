@@ -334,21 +334,28 @@ def show_task_details(task):
             st.write("No subtasks available for this task.")
 
 def update_task_in_db(task_id, new_task_name, new_assigned_unit, new_start_date, new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities):
-    # Example SQL query (modify according to your DB schema)
     query = """
     UPDATE tasks 
     SET task_name = %s, assigned_unit = %s, start_date = %s, due_date = %s, status = %s, follow_up = %s, completed_activities = %s, pending_activities = %s
     WHERE id = %s
     """
     values = (new_task_name, new_assigned_unit, new_start_date, new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities, task_id)
-    
-    # Execute the query
-    conn = connect_db()  # Ensure you have a function to get the DB connection
-    cursor = conn.cursor()
-    cursor.execute(query, values)
-    conn.commit()
-    cursor.close()
-    conn.close()
+
+    print("🔍 SQL Query:", query)
+    print("🔍 Values:", values)  # Debugging output
+
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute(query, values)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("✅ Task updated successfully!")
+        return True  # Indicate success
+    except Exception as e:
+        print("❌ Error updating task:", e)
+        return False  # Indicate failure
 
 def execute_db_query(query, values=()):
     conn = connect_db()  # Update with your actual DB path
@@ -414,51 +421,59 @@ def render_task_table(filtered_df):
         details_button = col5.button("Details", key=f"details_{task['id']}")
         if details_button:
             show_task_details(task)
-        
+        # Store state of the form
+
+        if f"edit_mode_{task["id"]}" not in st.session_state:
+            st.session_state[f"edit_mode_{task['id']}"] = False
+        print("status", f"Edit Mode: {st.session_state[f'edit_mode_{task['id']}']}")  # Debugging print
+
         edit_button = col6.button("✏️ Edit", key=f"edit_{task['id']}")
+
         if edit_button:
             st.session_state[f"edit_mode_{task['id']}"] = True
 
-            if st.session_state.get(f"edit_mode_{task['id']}", False):
-                with st.form(key=f"edit_form_{task['id']}"):
-                    new_task_name = st.text_input("Task Name", value=task["task_name"])
-                    
-                    # Convert "Assigned Unit" string to a list
-                    assigned_units_list = task["assigned_unit"].split(" & ") if task["assigned_unit"] else []
+        if st.session_state[f"edit_mode_{task['id']}"]:
+            with st.form(f"edit_form_{task['id']}", clear_on_submit=True):
+                new_task_name = st.text_input("Task Name", value=task["task_name"])
+                
+                # Convert "Assigned Unit" string to a list
+                assigned_units_list = task["assigned_unit"].split(" & ") if task["assigned_unit"] else []
+                new_assigned_unit = st.multiselect("Assigned Unit", assigned_units, default=assigned_units_list)
+                new_assigned_unit_str = " & ".join(new_assigned_unit)
 
-                    # Use multiselect to allow multiple units
-                    new_assigned_unit = st.multiselect("Assigned Unit", assigned_units, default=assigned_units_list)
-                    
-                    # Convert selected units back to string format
-                    new_assigned_unit_str = " & ".join(new_assigned_unit)
+                # Handle NaN dates by replacing them with today's date
+                default_start_date = pd.to_datetime(task["start_date"]).date() if pd.notna(task["start_date"]) else date.today()
+                default_due_date = pd.to_datetime(task["due_date"]).date() if pd.notna(task["due_date"]) else date.today()
 
-                    new_start_date = st.date_input("Start Date", value=task["start_date"])
-                    new_due_date = st.date_input("Due Date", value=task["due_date"])
-                    new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], 
-                                            index=["Not Started", "In Progress", "Completed"].index(task["status"]))
-                    new_follow_up = st.text_area("Tindak Lanjut", value=task["follow_up"])
+                new_start_date = st.date_input("Start Date", value=default_start_date)
+                new_due_date = st.date_input("Due Date", value=default_due_date)
 
-                    # Add completed & pending activities input
-                    new_completed_activities = st.text_area("✅ Completed Activities", value=task.get("completed_activities", ""))
-                    new_pending_activities = st.text_area("⏳ Pending Activities", value=task.get("pending_activities", ""))
+                new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], 
+                                        index=["Not Started", "In Progress", "Completed"].index(task["status"]))
+                new_follow_up = st.text_area("Tindak Lanjut", value=task["follow_up"])
 
-                    colA, colB, colC = st.columns([1, 1, 1])
-                    with colA:
-                        submitted = st.form_submit_button("Save Changes")
-                    with colC:
-                        cancel = st.form_submit_button("Cancel")
+                # Handle missing values for activities
+                new_completed_activities = st.text_area("✅ Completed Activities", value=task.get("completed_activities", ""))
+                new_pending_activities = st.text_area("⏳ Pending Activities", value=task.get("pending_activities", ""))
 
-                    if submitted:
-                        update_task_in_db(
-                            task["id"], new_task_name, new_assigned_unit_str, new_start_date, 
-                            new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities
-                        )
-                        st.session_state[f"edit_mode_{task['id']}"] = False
-                        st.rerun()
-                    
-                    if cancel:
-                        st.session_state[f"edit_mode_{task['id']}"] = False
-                        st.rerun()
+                colA, colB, colC = st.columns([1, 1, 1])
+                with colA:
+                    submitted = st.form_submit_button("Save Changes")
+                with colC:
+                    cancel = st.form_submit_button("Cancel")
+
+            if submitted:
+                print(f"🔍 Edit form submitted for Task ID: {task['id']}")  # Debugging print
+                update_task_in_db(
+                    task["id"], new_task_name, new_assigned_unit_str, new_start_date, 
+                    new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities)
+                st.success("✅ Task updated successfully!")
+                st.session_state[f"edit_mode_{task['id']}"] = False
+                st.rerun()
+
+            if cancel:
+                st.session_state[f"edit_mode_{task['id']}"] = False
+                st.rerun()
 
 
 # Render Task Table
