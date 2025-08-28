@@ -53,7 +53,7 @@ st.markdown(
     """
     <style>
         .header-box {
-            background-color: #182c61;
+            background-color: #1c2d5a;  /* Main brand blue */
             padding: 20px;
             border-radius: 12px;
             color: white;
@@ -69,11 +69,11 @@ st.markdown(
             right: 0;
             width: 100px;
             height: 100px;
-            background-color: #182c61;
+            background-color: #1c2d5a; /* Brand blue */
             clip-path: polygon(100% 0, 0 0, 100% 100%);
         }
         .subheader-box {
-            background-color: #1e3799;
+            background-color: #ef4123; /* Accent vivid red */
             padding: 10px;
             border-radius: 8px;
             color: white;
@@ -83,7 +83,7 @@ st.markdown(
             margin-bottom: 10px;
         }
         .metric-box {
-            background-color: #f1f1f1;
+            background-color: #f9f9f9;
             padding: 10px;
             border-radius: 8px;
             text-align: center;
@@ -92,23 +92,90 @@ st.markdown(
         .metric-box h3 {
             margin: 0;
             font-size: 20px;
-            color: #182c61;
+            color: #1c2d5a; /* Brand blue */
         }
         .metric-box p {
             margin: 0;
             font-size: 16px;
-            color: #1e3799;
+            color: #ef4123; /* Accent */
         }
         .alert-box {
-            background-color: #f8d7da;
-            color: #721c24;
+            background-color: #fdeaea;  /* Light red background */
+            color: #dc2626;             /* Standard alert red */
             padding: 10px;
             border-radius: 8px;
             margin-bottom: 10px;
+            border: 1px solid #dc2626;
         }
     </style>
     <div class='corner-accent'></div>
     <div class='header-box'>📌 Team Activity Dashboard</div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    """
+    <style>
+    /* Global font */
+    html, body, [class*="css"]  {
+        font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', sans-serif;
+        color: #1c2d5a;
+    }
+
+    /* Headers */
+    h1, h2, h3, h4, h5, h6 {
+        font-weight: 600;
+        color: #1c2d5a;
+    }
+
+    /* Primary buttons */
+    .stButton button {
+        background-color: #1c2d5a;
+        color: white;
+        border-radius: 8px;
+        border: none;
+        padding: 0.6em 1.2em;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .stButton button:hover {
+        background-color: #142046;
+    }
+
+    /* Accent highlights (brand red #ef4123) */
+    .st-emotion-cache-1v0mbdj p, .accent-text {
+        color: #ef4123 !important;
+        font-weight: 600;
+    }
+
+    /* Warning or error messages */
+    .stAlert {
+        border-left: 6px solid red !important;
+        border-radius: 6px;
+    }
+
+    /* Metric boxes */
+    [data-testid="stMetric"] {
+        background-color: #f9fafc;
+        border: 1px solid #e5e7eb;
+        border-left: 5px solid #1c2d5a;
+        padding: 1em;
+        border-radius: 12px;
+        margin: 0.5em 0;
+    }
+
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background-color: #1c2d5a;
+    }
+    section[data-testid="stSidebar"] h1, 
+    section[data-testid="stSidebar"] h2, 
+    section[data-testid="stSidebar"] h3, 
+    section[data-testid="stSidebar"] p {
+        color: white;
+    }
+    </style>
     """,
     unsafe_allow_html=True
 )
@@ -127,11 +194,20 @@ col1.markdown(f"<div class='metric-box'><h3>Days to End of Month</h3><p>{days_to
 col2.markdown(f"<div class='metric-box'><h3>Days to End of Year</h3><p>{days_to_eoy}</p></div>", unsafe_allow_html=True)
 
 def load_tasks():
-    conn = connect_db()
-    query = "SELECT * FROM tasks;"
-    df = pd.read_sql(query, conn)
-    conn.close()
-    return df
+    try:
+        # Try DB connection first
+        conn = connect_db()
+        query = "SELECT * FROM tasks;"
+        df = pd.read_sql(query, conn)
+        conn.close()
+        return df
+    except Exception as e:
+        st.warning(f"⚠️ Using fallback CSV because DB connection failed: {e}")
+        # Load local CSV instead
+        return pd.read_csv("task.csv")
+
+def load_csv():
+    return pd.read_csv("task.csv")
 
 tasks_df = load_tasks()
 
