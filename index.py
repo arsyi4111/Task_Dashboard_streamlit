@@ -448,19 +448,39 @@ def convert_df_to_excel(df):
         df.to_excel(writer, index=False, sheet_name="Tasks")
     return output.getvalue()
 
+import streamlit as st
+import pandas as pd
+from datetime import date
+
 def render_task_table(filtered_df):
-    
+    # CSS untuk style border di setiap cell
+    st.markdown("""
+        <style>
+        .task-header, .task-cell {
+            border: 1px solid #ccc;
+            padding: 6px;
+            text-align: left;
+            vertical-align: middle;
+        }
+        .task-header {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     st.markdown("<div class='subheader-box'>📋 Task List</div>", unsafe_allow_html=True)
-    # **📥 Download Buttons & Sorting**
+
+    # 📥 Download + Sorting
     colA, colB, colC = st.columns([1, 1, 1])
     with colA:
         csv_data = filtered_df.to_csv(index=False).encode("utf-8")
         st.download_button(label="📥 Download CSV", data=csv_data, file_name="tasks.csv", mime="text/csv")
-    
+
     with colC:
         sort_option = st.selectbox("Sort by", ["Task Name", "Assigned Unit", "Due Date", "Status"], index=2)
-        
-    # **Apply Sorting**
+
+    # Apply Sorting
     if sort_option == "Task Name":
         filtered_df = filtered_df.sort_values(by="task_name", ascending=True)
     elif sort_option == "Assigned Unit":
@@ -471,64 +491,66 @@ def render_task_table(filtered_df):
         status_order = {"Not Started": 0, "In Progress": 1, "Completed": 2}
         filtered_df = filtered_df.sort_values(by="status", key=lambda x: x.map(status_order))
 
-    # **Table Headers**
-    col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 1, 1])
-    col1.write("**Task Name**")
-    col2.write("**Assigned Unit**")
-    col3.write("**Due Date**")
-    col4.write("**Status**")
-    col5.write("**Details**")
-    col6.write("**Edit**")
+    # === HEADER ===
+    col0, col1, col2, col3, col4, col5, col6 = st.columns([0.4, 3, 2, 2, 2, 1, 1])
+    col0.markdown("<div class='task-header'>No</div>", unsafe_allow_html=True)
+    col1.markdown("<div class='task-header'>Task Name</div>", unsafe_allow_html=True)
+    col2.markdown("<div class='task-header'>Assigned Unit</div>", unsafe_allow_html=True)
+    col3.markdown("<div class='task-header'>Due Date</div>", unsafe_allow_html=True)
+    col4.markdown("<div class='task-header'>Status</div>", unsafe_allow_html=True)
+    col5.markdown("<div class='task-header'>Details</div>", unsafe_allow_html=True)
+    col6.markdown("<div class='task-header'>Edit</div>", unsafe_allow_html=True)
 
-    assigned_units = ["Fund Distribution", "Payment", "Fronting", "MCFS", "Resya", "Marketing", "DGPS", "Product Management","not assigned"]
+    # === ROWS ===
+    for i, (_, task) in enumerate(filtered_df.iterrows(), start=1):
+        col0, col1, col2, col3, col4, col5, col6 = st.columns([0.4, 3, 2, 2, 2, 1, 1])
 
-    # **Render Task Rows**
-    for _, task in filtered_df.iterrows():
-        col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 1, 1])
-        col1.write(task["task_name"])
-        col2.write(task["assigned_unit"])
-        
+        # No
+        col0.markdown(f"<div class='task-cell'>{i}</div>", unsafe_allow_html=True)
+
+        # Task Name
+        col1.markdown(f"<div class='task-cell'>{task['task_name']}</div>", unsafe_allow_html=True)
+        # Assigned Unit
+        col2.markdown(f"<div class='task-cell'>{task['assigned_unit']}</div>", unsafe_allow_html=True)
+
+        # Due Date
         due_date = pd.to_datetime(task["due_date"], dayfirst=True).strftime('%d %B %Y') if pd.notna(task["due_date"]) else "TBC"
-        col3.write(due_date)
-        
+        col3.markdown(f"<div class='task-cell'>{due_date}</div>", unsafe_allow_html=True)
+
+        # Status (berwarna)
         status_color = {"Completed": "green", "In Progress": "orange", "Not Started": "red"}.get(task["status"], "black")
-        col4.markdown(f"<span style='color:{status_color}'>{task['status']}</span>", unsafe_allow_html=True)
-        
+        col4.markdown(f"<div class='task-cell' style='color:{status_color}'>{task['status']}</div>", unsafe_allow_html=True)
+
+        # Tombol interaktif tetap Streamlit
         details_button = col5.button("Details", key=f"details_{task['id']}")
         if details_button:
             show_task_details(task)
-        # Store state of the form
-
-        if f"edit_mode_{task["id"]}" not in st.session_state:
-            st.session_state[f"edit_mode_{task['id']}"] = False
-        print("status", f"Edit Mode: {st.session_state[f'edit_mode_{task['id']}']}")  # Debugging print
 
         edit_button = col6.button("✏️ Edit", key=f"edit_{task['id']}")
-
         if edit_button:
             st.session_state[f"edit_mode_{task['id']}"] = True
 
-        if st.session_state[f"edit_mode_{task['id']}"]:
+        # Mode edit (sama seperti sebelumnya)...
+        if st.session_state.get(f"edit_mode_{task['id']}", False):
             with st.form(f"edit_form_{task['id']}", clear_on_submit=True):
+                # form isiannya tetap sama seperti sebelumnya
                 new_task_name = st.text_input("Task Name", value=task["task_name"])
-                
-                # Convert "Assigned Unit" string to a list
+                assigned_units = ["Fund Distribution", "Payment", "Fronting", "MCFS", "Resya",
+                                  "Marketing", "DGPS", "Product Management", "not assigned"]
+
                 assigned_units_list = task["assigned_unit"].split(" & ") if task["assigned_unit"] else []
                 new_assigned_unit = st.multiselect("Assigned Unit", assigned_units, default=assigned_units_list)
                 new_assigned_unit_str = " & ".join(new_assigned_unit)
 
-                # Handle NaN dates by replacing them with today's date
                 default_start_date = pd.to_datetime(task["start_date"]).date() if pd.notna(task["start_date"]) else date.today()
                 default_due_date = pd.to_datetime(task["due_date"]).date() if pd.notna(task["due_date"]) else date.today()
-
                 new_start_date = st.date_input("Start Date", value=default_start_date)
                 new_due_date = st.date_input("Due Date", value=default_due_date)
 
-                new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], 
-                                        index=["Not Started", "In Progress", "Completed"].index(task["status"]))
+                new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"],
+                                          index=["Not Started", "In Progress", "Completed"].index(task["status"]))
                 new_follow_up = st.text_area("Tindak Lanjut", value=task["follow_up"])
 
-                # Handle missing values for activities
                 new_completed_activities = st.text_area("✅ Completed Activities", value=task.get("completed_activities", ""))
                 new_pending_activities = st.text_area("⏳ Pending Activities", value=task.get("pending_activities", ""))
 
@@ -539,10 +561,10 @@ def render_task_table(filtered_df):
                     cancel = st.form_submit_button("Cancel")
 
             if submitted:
-                print(f"🔍 Edit form submitted for Task ID: {task['id']}")  # Debugging print
                 update_task_in_db(
-                    task["id"], new_task_name, new_assigned_unit_str, new_start_date, 
-                    new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities)
+                    task["id"], new_task_name, new_assigned_unit_str, new_start_date,
+                    new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities
+                )
                 st.success("✅ Task updated successfully!")
                 st.session_state[f"edit_mode_{task['id']}"] = False
                 st.rerun()
