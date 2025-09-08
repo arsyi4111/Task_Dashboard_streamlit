@@ -505,7 +505,7 @@ def render_task_table(filtered_df):
         filtered_df = filtered_df.sort_values(by="status", key=lambda x: x.map(status_order))
 
     # === HEADER ===
-    col0, col1, col2, col3, col4, col5, col6, col7 = st.columns([0.4, 3, 2, 2, 2, 1, 1, 1])
+    col0, col1, col2, col3, col4, col5, col6, col7 = st.columns([0.4, 3, 2, 2, 1, 1, 1, 2])
     col0.markdown("<div class='task-header'>No</div>", unsafe_allow_html=True)
     col1.markdown("<div class='task-header'>Task Name</div>", unsafe_allow_html=True)
     col2.markdown("<div class='task-header'>Assigned Unit</div>", unsafe_allow_html=True)
@@ -518,7 +518,7 @@ def render_task_table(filtered_df):
 
     # === ROWS ===
     for i, (_, task) in enumerate(filtered_df.iterrows(), start=1):
-        col0, col1, col2, col3, col4, col5, col6, col7 = st.columns([0.4, 3, 2, 2, 2, 1, 1, 1])
+        col0, col1, col2, col3, col4, col5, col6, col7 = st.columns([0.4, 3, 2, 2, 1, 1, 1, 2])
 
         # No
         col0.markdown(f"<div class='task-cell'>{i}</div>", unsafe_allow_html=True)
