@@ -409,13 +409,26 @@ def show_task_details(task):
         else:
             st.write("No subtasks available for this task.")
 
-def update_task_in_db(task_id, new_task_name, new_assigned_unit, new_start_date, new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities):
+def update_task_in_db(task_id, new_task_name, new_assigned_unit, new_start_date, new_due_date,
+                      new_status, new_follow_up, new_completed_activities, new_pending_activities):
     query = """
     UPDATE tasks 
-    SET task_name = %s, assigned_unit = %s, start_date = %s, due_date = %s, status = %s, follow_up = %s, completed_activities = %s, pending_activities = %s
+    SET task_name = %s,
+        assigned_unit = %s,
+        start_date = %s,
+        due_date = %s,
+        status = %s,
+        follow_up = %s,
+        completed_activities = %s,
+        pending_activities = %s,
+        last_updated = NOW()   -- ⬅️ otomatis update timestamp
     WHERE id = %s
     """
-    values = (new_task_name, new_assigned_unit, new_start_date, new_due_date, new_status, new_follow_up, new_completed_activities, new_pending_activities, task_id)
+    values = (
+        new_task_name, new_assigned_unit, new_start_date, new_due_date,
+        new_status, new_follow_up, new_completed_activities, new_pending_activities,
+        task_id
+    )
 
     print("🔍 SQL Query:", query)
     print("🔍 Values:", values)  # Debugging output
@@ -428,10 +441,10 @@ def update_task_in_db(task_id, new_task_name, new_assigned_unit, new_start_date,
         cursor.close()
         conn.close()
         print("✅ Task updated successfully!")
-        return True  # Indicate success
+        return True
     except Exception as e:
         print("❌ Error updating task:", e)
-        return False  # Indicate failure
+        return False
 
 def execute_db_query(query, values=()):
     conn = connect_db()  # Update with your actual DB path
@@ -492,7 +505,7 @@ def render_task_table(filtered_df):
         filtered_df = filtered_df.sort_values(by="status", key=lambda x: x.map(status_order))
 
     # === HEADER ===
-    col0, col1, col2, col3, col4, col5, col6 = st.columns([0.4, 3, 2, 2, 2, 1, 1])
+    col0, col1, col2, col3, col4, col5, col6, col7 = st.columns([0.4, 3, 2, 2, 2, 1, 1, 1])
     col0.markdown("<div class='task-header'>No</div>", unsafe_allow_html=True)
     col1.markdown("<div class='task-header'>Task Name</div>", unsafe_allow_html=True)
     col2.markdown("<div class='task-header'>Assigned Unit</div>", unsafe_allow_html=True)
@@ -500,10 +513,12 @@ def render_task_table(filtered_df):
     col4.markdown("<div class='task-header'>Status</div>", unsafe_allow_html=True)
     col5.markdown("<div class='task-header'>Details</div>", unsafe_allow_html=True)
     col6.markdown("<div class='task-header'>Edit</div>", unsafe_allow_html=True)
+    col7.markdown("<div class='task-header'>Last Updated</div>", unsafe_allow_html=True)
+
 
     # === ROWS ===
     for i, (_, task) in enumerate(filtered_df.iterrows(), start=1):
-        col0, col1, col2, col3, col4, col5, col6 = st.columns([0.4, 3, 2, 2, 2, 1, 1])
+        col0, col1, col2, col3, col4, col5, col6, col7 = st.columns([0.4, 3, 2, 2, 2, 1, 1, 1])
 
         # No
         col0.markdown(f"<div class='task-cell'>{i}</div>", unsafe_allow_html=True)
@@ -572,6 +587,10 @@ def render_task_table(filtered_df):
             if cancel:
                 st.session_state[f"edit_mode_{task['id']}"] = False
                 st.rerun()
+
+        last_updated = pd.to_datetime(task["last_updated"], dayfirst=True).strftime('%d %B %Y') if pd.notna(task["last_updated"]) else "TBC"
+        col7.markdown(f"<div class='task-cell'>{last_updated}</div>", unsafe_allow_html=True)
+
 
 
 # Render Task Table
