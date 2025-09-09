@@ -7,8 +7,6 @@ import plotly.express as px
 from streamlit_modal import Modal
 import base64
 from datetime import date
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
 from metrics import load_performance_data, get_metrics
 
 st.set_page_config(page_title="Team Activity Dashboard", layout="wide")
