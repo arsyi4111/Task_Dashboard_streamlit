@@ -372,8 +372,8 @@ with tab2:
     st.markdown("### 📋 Task List")
 
     # Ensure dates are in datetime format
-    filtered_df["start_date"] = pd.to_datetime(filtered_df["start_date"], errors="coerce", dayfirst=True).dt.date
-    filtered_df["due_date"] = pd.to_datetime(filtered_df["due_date"], errors="coerce", dayfirst=True).dt.date
+    filtered_df["start_date"] = pd.to_datetime(filtered_df["start_date"], errors="coerce").dt.date
+    filtered_df["due_date"] = pd.to_datetime(filtered_df["due_date"], errors="coerce").dt.date
 
     # --- TOP ROW WITH METRICS ---
     st.markdown("<div class='subheader-box'>📊 Task Overview</div>", unsafe_allow_html=True)
@@ -505,7 +505,50 @@ with tab2:
     subtasks_df["end_date"] = pd.to_datetime(subtasks_df["end_date"], errors="coerce",dayfirst=True)
 
     # --- TASK DETAILS MODAL ---
+    
     def show_task_details(task):
+        st.markdown("""
+            <style>
+            /* Modal overlay - dark transparent background */
+            div[data-modal-overlay="true"] {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                background: rgba(0, 0, 0, 0.75) !important; /* darker dim */
+                backdrop-filter: blur(2px); /* soft blur effect */
+                z-index: 9998 !important;
+            }
+
+            /* Modal box */
+            div[data-modal-container="true"] {
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                background: #fff !important;
+                border-radius: 12px !important;
+                padding: 20px !important;
+                width: 70vw !important;
+                max-width: 800px !important;
+                max-height: 80vh !important;
+                overflow-y: auto !important;
+                box-shadow: 0 6px 20px rgba(0,0,0,0.4) !important;
+                z-index: 9999 !important;
+            }
+
+            /* Optional: style close button */
+            div[data-modal-container="true"] button {
+                background: #f44336 !important;
+                color: white !important;
+                border: none !important;
+                border-radius: 6px !important;
+                padding: 4px 10px !important;
+                cursor: pointer !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
         modal = Modal("Task Details", key=f"modal_{task['id']}")
         with modal.container():
             st.write(f"**Task Name:** {task['task_name']}")
