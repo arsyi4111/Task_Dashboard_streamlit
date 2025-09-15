@@ -8,6 +8,7 @@ from streamlit_modal import Modal
 import base64
 from datetime import date
 from metrics import load_performance_data, get_metrics
+import numpy as np
 
 st.set_page_config(page_title="Team Activity Dashboard", layout="wide")
 
@@ -212,7 +213,6 @@ with tab1:
 
     # --- METRICS & COUNTDOWN ---
     metrics = get_metrics(df)
-
     today = datetime.date.today()
     end_of_month = (
         datetime.date(today.year, today.month + 1, 1) - datetime.timedelta(days=1)
@@ -221,13 +221,48 @@ with tab1:
     )
     end_of_year = datetime.date(today.year, 12, 31)
 
+    # --- Total calendar days ---
+    total_days_month = (end_of_month - datetime.date(today.year, today.month, 1)).days + 1
+    total_days_year = (end_of_year - datetime.date(today.year, 1, 1)).days + 1
+
+    # --- Remaining days ---
     days_to_eom = (end_of_month - today).days
     days_to_eoy = (end_of_year - today).days
+
+    # --- Total workdays ---
+    total_workdays_month = np.busday_count(
+        datetime.date(today.year, today.month, 1).strftime("%Y-%m-%d"),
+        (end_of_month + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    )
+    total_workdays_year = np.busday_count(
+        datetime.date(today.year, 1, 1).strftime("%Y-%m-%d"),
+        (end_of_year + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    )
+
+    # --- Remaining workdays ---
+    workdays_to_eom = np.busday_count(
+        today.strftime("%Y-%m-%d"),
+        (end_of_month + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    )
+    workdays_to_eoy = np.busday_count(
+        today.strftime("%Y-%m-%d"),
+        (end_of_year + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    )
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown(f"<div class='metric-box'><h3>Days to End of Month</h3><p>{days_to_eom}</p></div>", unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div class='metric-box'>
+                <h3>Days to End of Month</h3>
+                <p>{days_to_eom}/{total_days_month}<br>
+                <span style="font-size:0.9em; color:gray;">Work days: {workdays_to_eom}/{total_workdays_month}</span></p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
         st.markdown(
             f"""
             <div class='metric-box'>
@@ -236,11 +271,22 @@ with tab1:
                 <p><b>Target:</b> {metrics['mtd_target']:,.0f}</p>
                 <p><b>Ach:</b> {metrics['mtd_ach']:.1f}%</p>
             </div>
-            """, unsafe_allow_html=True
+            """,
+            unsafe_allow_html=True
         )
 
     with col2:
-        st.markdown(f"<div class='metric-box'><h3>Days to End of Year</h3><p>{days_to_eoy}</p></div>", unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div class='metric-box'>
+                <h3>Days to End of Year</h3>
+                <p>{days_to_eoy}/{total_days_year}<br>
+                <span style="font-size:0.9em; color:gray;">Work days: {workdays_to_eoy}/{total_workdays_year}</span></p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
         st.markdown(
             f"""
             <div class='metric-box'>
@@ -249,7 +295,8 @@ with tab1:
                 <p><b>Target:</b> {metrics['ytd_target']:,.0f}</p>
                 <p><b>Ach:</b> {metrics['ytd_ach']:.1f}%</p>
             </div>
-            """, unsafe_allow_html=True
+            """,
+            unsafe_allow_html=True
         )
 
     # --- MONTHLY BAR CHART ---
