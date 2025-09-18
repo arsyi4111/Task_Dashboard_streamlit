@@ -4,10 +4,12 @@ import psycopg2
 import datetime
 import os
 import plotly.express as px
+import plotly.graph_objects as go
 from streamlit_modal import Modal
 import base64
 from datetime import date
 from metrics import load_performance_data, get_metrics
+from sklearn.linear_model import LinearRegression
 import numpy as np
 
 st.set_page_config(page_title="Team Activity Dashboard", layout="wide")
@@ -182,6 +184,44 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# --- YEARLY COUNTDOWN (TOP BANNER) ---
+today = datetime.date.today()
+end_of_year = datetime.date(today.year, 12, 31)
+
+# Total calendar days in year
+total_days_year = (end_of_year - datetime.date(today.year, 1, 1)).days + 1
+# Remaining calendar days
+days_to_eoy = (end_of_year - today).days
+# Total workdays in year
+total_workdays_year = np.busday_count(
+    datetime.date(today.year, 1, 1).strftime("%Y-%m-%d"),
+    (end_of_year + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+)
+# Remaining workdays
+workdays_to_eoy = np.busday_count(
+    today.strftime("%Y-%m-%d"),
+    (end_of_year + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+)
+
+# Display at top
+st.markdown(f"""
+    <div style="
+        background-color:#ef4123;
+        padding:20px;
+        border-radius:12px;
+        text-align:center;
+        color:white;
+        font-size:28px;
+        font-weight:bold;
+        margin-bottom:20px;
+    ">
+        ⏳ WORKDAYS REMAINING IN 2025: 
+        <br>
+            {workdays_to_eoy} days  
+        <br>
+    </div>
+""", unsafe_allow_html=True)
+
 
 # --- PAGE TABS ---
 tab1, tab2 = st.tabs(["📊 Monthly Performance", "📋 Task List"])
@@ -266,7 +306,7 @@ with tab1:
         st.markdown(
             f"""
             <div class='metric-box'>
-                <h4>📅 MtD Revenue</h4>
+                <h4>📅 Monthly Performance </h4>
                 <p><b>Total:</b> {metrics['mtd_total']:,.0f}</p>
                 <p><b>Target:</b> {metrics['mtd_target']:,.0f}</p>
                 <p><b>Ach:</b> {metrics['mtd_ach']:.1f}%</p>
@@ -290,7 +330,7 @@ with tab1:
         st.markdown(
             f"""
             <div class='metric-box'>
-                <h4>📊 YtD Revenue</h4>
+                <h4>📊 FY Performance</h4>
                 <p><b>Total:</b> {metrics['ytd_total']:,.0f}</p>
                 <p><b>Target:</b> {metrics['ytd_target']:,.0f}</p>
                 <p><b>Ach:</b> {metrics['ytd_ach']:.1f}%</p>
@@ -300,33 +340,72 @@ with tab1:
         )
 
     # --- MONTHLY BAR CHART ---
-    st.subheader("📊 Monthly Revenue vs Target")
+    st.subheader("📊 Monthly Revenue vs Target + Forecast")
 
+    # Aggregate by month
     monthly_summary = df.groupby("bulan").agg({
         "Kinerja 2025": "sum",
         "Target Tahun Ini": "sum"
     }).reset_index()
 
+    # Map month number to short names
     month_map = {
         1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun",
         7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"
     }
-    monthly_summary["bulan"] = monthly_summary["bulan"].map(month_map)
+    monthly_summary["bulan_name"] = monthly_summary["bulan"].map(month_map)
 
+    # Compute achievement
     monthly_summary["Achievement"] = (
         monthly_summary["Kinerja 2025"] / monthly_summary["Target Tahun Ini"] * 100
     ).round(1)
 
+    # ==============================
+    # 1. Fit linear regression until August
+    # ==============================
+    train_df = monthly_summary[monthly_summary["bulan"] <= 8].copy()
+
+    X = train_df[["bulan"]].values
+    y = train_df["Kinerja 2025"].values
+
+    model = LinearRegression()
+    model.fit(X, y)
+
+    # Forecast Sep–Dec
+    future_months = np.arange(9, 13).reshape(-1, 1)
+    forecast = model.predict(future_months)
+
+    # Put forecast back into dataframe
+    forecast_df = pd.DataFrame({
+        "bulan": range(9, 13),
+        "bulan_name": [month_map[m] for m in range(9, 13)],
+        "Forecast": forecast
+    })
+
+    # Merge forecast with monthly_summary
+    monthly_summary = monthly_summary.merge(
+        forecast_df[["bulan", "Forecast"]],
+        on="bulan",
+        how="left"
+    )
+
+
+    # ==============================
+    # 2. Prepare data for plotting
+    # ==============================
     plot_data = monthly_summary.melt(
-        id_vars="bulan",
-        value_vars=["Kinerja 2025", "Target Tahun Ini"],
+        id_vars="bulan_name",
+        value_vars=["Kinerja 2025", "Target Tahun Ini", "Forecast"],
         var_name="Kategori",
         value_name="Nilai"
     )
 
+    # ==============================
+    # 3. Plot
+    # ==============================
     fig = px.bar(
         plot_data,
-        x="bulan",
+        x="bulan_name",
         y="Nilai",
         color="Kategori",
         barmode="group",
@@ -335,18 +414,75 @@ with tab1:
 
     fig.update_yaxes(title="Revenue (in Millions)", tickformat=".2s")
     fig.update_xaxes(title="Bulan")
-    fig.update_layout(title="Revenue vs Target (Monthly)", legend_title="Kategori", bargap=0.2)
+    fig.update_layout(
+        title="Revenue vs Target (Monthly, with Forecast)",
+        legend_title="Kategori",
+        bargap=0.2
+    )
 
+    # ==============================
+    # 4. Add achievement labels
+    # ==============================
     for i, row in monthly_summary.iterrows():
         fig.add_annotation(
-            x=row["bulan"],
-            y=max(row["Kinerja 2025"], row["Target Tahun Ini"]) * 1.05,
-            text=f"Ach: {row['Achievement']}%",
+            x=row["bulan_name"],
+            y=max(row["Kinerja 2025"], row["Target Tahun Ini"], row.get("Forecast", 0)) * 1.05,
+            text=f"Ach: {row['Achievement']}%" if not pd.isna(row["Achievement"]) else "",
             showarrow=False,
             font=dict(size=12, color="black")
         )
 
+    # ==============================
+    # 5. Add regression trendline (only Jan–Aug actuals)
+    # ==============================
+    x_trend = np.arange(1, 13)
+    y_trend = model.predict(x_trend.reshape(-1, 1))
+    fig.add_traces(go.Scatter(
+        x=[month_map[m] for m in x_trend],
+        y=y_trend,
+        mode="lines",
+        name="Trendline (Jan–Aug)",
+        line=dict(color="black", dash="dash")
+    ))
+
     st.plotly_chart(fig, use_container_width=True)
+
+    # ==============================
+    # 6. Total Projected Revenue & Achievement
+    # ==============================
+
+    # Real revenue until Aug
+    real_until_aug = monthly_summary.loc[monthly_summary["bulan"] <= 8, "Kinerja 2025"].sum()
+
+    # Forecast Sep–Dec
+    forecast_sept_dec = monthly_summary.loc[monthly_summary["bulan"] >= 9, "Forecast"].sum()
+
+    # Total projected
+    total_projected_revenue = real_until_aug + forecast_sept_dec
+
+    # Total target full year (use filtered df)
+    total_target = monthly_summary["Target Tahun Ini"].sum()
+
+    # Projected achievement
+    projected_ach = (total_projected_revenue / total_target * 100) if total_target > 0 else 0
+
+    # Display nicely
+    st.markdown(f"""
+        <div style="
+            background-color:#1c2d5a;
+            padding:15px;
+            border-radius:10px;
+            color:white;
+            font-size:20px;
+            font-weight:bold;
+            text-align:center;
+            margin-top:20px;
+        ">
+            📈 Total Projected Revenue (2025): {total_projected_revenue:,.0f}<br>
+            🎯 Projected Achievement: {projected_ach:.1f}%
+        </div>
+    """, unsafe_allow_html=True)
+
 
 with tab2:
     # your task list code here
