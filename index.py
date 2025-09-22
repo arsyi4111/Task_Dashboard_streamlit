@@ -10,6 +10,8 @@ import base64
 from datetime import date
 from metrics import load_performance_data, get_metrics
 from sklearn.linear_model import LinearRegression
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+import statsmodels.api as sm
 import numpy as np
 
 st.set_page_config(page_title="Team Activity Dashboard", layout="wide")
@@ -211,7 +213,7 @@ st.markdown(f"""
         border-radius:12px;
         text-align:center;
         color:white;
-        font-size:28px;
+        font-size:50px;
         font-weight:bold;
         margin-bottom:20px;
     ">
@@ -339,26 +341,27 @@ with tab1:
             unsafe_allow_html=True
         )
 
-    # --------------------------
-    # 📊 Continuous Timeline: 2024 + 2025 (with Forecast)
-    # --------------------------
-    st.subheader("📊 Revenue Timeline (2024 + 2025)")
+    # ==============================
+    # 📊 Continuous Timeline: 2024 + 2025 (with Stable Seasonality Forecast)
+    # ==============================
+    st.subheader("📊 Revenue Timeline: 2024 + 2025 (with Forecast, Stable Seasonality)")
+    
 
-    # 1. Prepare data for both years
+    # 1. Prepare data
     monthly_agg = df.groupby("bulan").agg({
         "Kinerja 2024": "sum",
         "Kinerja 2025": "sum",
         "Target Tahun Ini": "sum"
     }).reset_index()
 
-    # Map month number
     month_map = {
         1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun",
         7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"
     }
+
     monthly_agg["bulan_name"] = monthly_agg["bulan"].map(month_map)
 
-    # Build long-form dataset
+    # Build long form
     df_2024 = monthly_agg[["bulan", "bulan_name", "Kinerja 2024"]].copy()
     df_2024["year"] = 2024
     df_2024.rename(columns={"Kinerja 2024": "Kinerja"}, inplace=True)
@@ -367,46 +370,48 @@ with tab1:
     df_2025["year"] = 2025
     df_2025.rename(columns={"Kinerja 2025": "Kinerja", "Target Tahun Ini": "Target"}, inplace=True)
 
-    # Combine
     timeline = pd.concat([df_2024, df_2025], ignore_index=True)
-
-    # Create continuous month index
     timeline["t"] = (timeline["year"] - 2024) * 12 + timeline["bulan"]
     timeline["label"] = timeline["bulan_name"] + " " + timeline["year"].astype(str)
 
     # ==============================
-    # 2. Train regression (2024 + Jan–Aug 2025)
+    # 2. Trend + Month Dummies Regression (using 2024 + Jan–Aug 2025)
     # ==============================
-    train = timeline[(timeline["year"] == 2024) | ((timeline["year"] == 2025) & (timeline["bulan"] <= 8))]
+    train = timeline[(timeline["year"] == 2024) | ((timeline["year"] == 2025) & (timeline["bulan"] <= 8))].copy()
 
-    X = train[["t"]].values
-    y = train["Kinerja"].values
+    # Month dummies
+    month_dummies = pd.get_dummies(train["bulan"], prefix="m", drop_first=True)
 
-    model = LinearRegression()
-    model.fit(X, y)
+    # Ensure numeric types
+    X = pd.concat([train[["t"]].astype(float), month_dummies.astype(float)], axis=1)
+    y = train["Kinerja"].astype(float)
+
+    model = sm.OLS(y, sm.add_constant(X)).fit()
 
     # Forecast Sep–Dec 2025
     future_months = np.arange(9, 13)
-    future_t = ((2025 - 2024) * 12 + future_months).reshape(-1, 1)
-    forecast = model.predict(future_t)
+    future_t = ((2025 - 2024) * 12 + future_months)
+
+    future_dummies = pd.get_dummies(future_months, prefix="m", drop_first=True)
+    future_dummies = future_dummies.reindex(columns=month_dummies.columns, fill_value=0).astype(float)
+
+    X_future = pd.concat([pd.DataFrame({"t": future_t}, dtype=float), future_dummies], axis=1)
+    forecast_values = model.predict(sm.add_constant(X_future))
 
     forecast_df = pd.DataFrame({
         "year": 2025,
         "bulan": future_months,
         "bulan_name": [month_map[m] for m in future_months],
-        "t": (2025 - 2024) * 12 + future_months,
-        "Forecast": forecast
+        "t": future_t,
+        "Forecast": forecast_values
     })
     forecast_df["label"] = forecast_df["bulan_name"] + " 2025"
-    
 
-    # Merge forecast into timeline
+    # Merge forecast
     timeline = timeline.merge(forecast_df[["t", "Forecast"]], on="t", how="left")
 
-    print(timeline.head())
-
     # ==============================
-    # 2b. Overwrite Penyaluran Dana forecasts
+    # 2b. Overwrite Penyaluran Dana Forecasts
     # ==============================
     overwrite_data = {
         "17. PENYALURAN DANA NASIONAL": [0, 11500, 6000, 20600],
@@ -422,9 +427,8 @@ with tab1:
                 "Forecast"
             ] = val
 
-
     # ==============================
-    # 3. Plot continuous timeline
+    # 3. Plot
     # ==============================
     plot_data = timeline.melt(
         id_vars=["label"],
@@ -445,30 +449,26 @@ with tab1:
     fig.update_yaxes(title="Revenue (in Millions)", tickformat=".2s")
     fig.update_xaxes(title="Month", tickangle=-45)
     fig.update_layout(
-        title="Revenue Timeline: 2024 + 2025 (with Forecast)",
+        title="Revenue Timeline: 2024 + 2025 (with Forecast, Stable Seasonality)",
         legend_title="Kategori",
         bargap=0.2
     )
 
-    # Add regression trendline
-    x_trend = timeline["t"].values
-    y_trend = model.predict(x_trend.reshape(-1, 1))
+    # Add fitted trend (2024 + Jan–Aug 2025)
+    timeline["TrendFit"] = model.predict(sm.add_constant(X))
     fig.add_traces(go.Scatter(
-        x=timeline["label"],
-        y=y_trend,
+        x=train["label"],
+        y=model.predict(sm.add_constant(X)),
         mode="lines",
-        name="Trendline (2024 + Jan–Aug 2025)",
+        name="Trend + Seasonality Fit",
         line=dict(color="black", dash="dash")
     ))
 
     st.plotly_chart(fig, use_container_width=True)
 
-        # ==============================
-    # 4. Summary: Projected 2025 vs Target
     # ==============================
-
-
-    # Make monthly summary for 2025
+    # 4. Summary (same as before)
+    # ==============================
     monthly_summary = (
         timeline[timeline["year"] == 2025]
         .groupby("bulan")
@@ -480,22 +480,12 @@ with tab1:
         .reset_index()
     )
 
-    # Real revenue until Aug (Jan–Aug)
     real_until_aug = monthly_summary.loc[monthly_summary["bulan"] <= 8, "Kinerja"].sum()
-
-    # Forecast Sep–Dec
     forecast_sept_dec = monthly_summary.loc[monthly_summary["bulan"] >= 9, "Forecast"].sum()
-
-    # Total projected 2025
     total_projected_revenue = real_until_aug + forecast_sept_dec
-
-    # Total target 2025
     total_target = monthly_summary["Target"].sum()
-
-    # Projected achievement
     projected_ach = (total_projected_revenue / total_target * 100) if total_target > 0 else 0
 
-    # Display nicely
     st.markdown(f"""
         <div style="
             background-color:#1c2d5a;
@@ -511,6 +501,7 @@ with tab1:
             🎯 Projected Achievement (2025): {projected_ach:.1f}%
         </div>
     """, unsafe_allow_html=True)
+
 
 
 with tab2:
