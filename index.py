@@ -308,7 +308,7 @@ with tab1:
         st.markdown(
             f"""
             <div class='metric-box'>
-                <h4>📅 Monthly Performance </h4>
+                <h4>📅 Monthly Performance (last update: 18 September 2025)</h4>
                 <p><b>Total:</b> {metrics['mtd_total']:,.0f}</p>
                 <p><b>Target:</b> {metrics['mtd_target']:,.0f}</p>
                 <p><b>Ach:</b> {metrics['mtd_ach']:.1f}%</p>
@@ -332,7 +332,7 @@ with tab1:
         st.markdown(
             f"""
             <div class='metric-box'>
-                <h4>📊 FY Performance</h4>
+                <h4>📊 FY Performance (last update: 18 September 2025)</h4>
                 <p><b>Total:</b> {metrics['ytd_total']:,.0f}</p>
                 <p><b>Target:</b> {metrics['ytd_target']:,.0f}</p>
                 <p><b>Ach:</b> {metrics['ytd_ach']:.1f}%</p>
