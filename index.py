@@ -226,7 +226,7 @@ st.markdown(f"""
 
 
 # --- PAGE TABS ---
-tab1, tab2 = st.tabs(["📊 Monthly Performance", "📋 Task List"])
+tab1, tab2, tab3 = st.tabs(["📊 Monthly Performance", "📋 Task List", "Insight Assistant"])
 
 with tab1:
     # ==============================
@@ -316,7 +316,7 @@ with tab1:
         st.markdown(f"""
             <div class='metric-box'>
                 <h4>📅 Monthly Performance</h4>
-                <p><b>last update: 18 September 2025</b></p>
+                <p><b>last update: 5 Oktober 2025</b></p>
                 <p><b>Total:</b> {metrics_excl['mtd_total']:,.0f}</p>
                 <p><b>Target:</b> {metrics_excl['mtd_target']:,.0f}</p>
                 <p><b>Ach:</b> {metrics_excl['mtd_ach']:.1f}%</p>
@@ -339,7 +339,7 @@ with tab1:
         st.markdown(f"""
             <div class='metric-box'>
                 <h4>📊 FY Performance</h4>
-                <p><b>last update: 18 September 2025</b></p>
+                <p><b>last update: 5 Oktober 2025</b></p>
                 <p><b>Total:</b> {metrics_excl['ytd_total']:,.0f}</p>
                 <p><b>Target:</b> {metrics_excl['ytd_target']:,.0f}</p>
                 <p><b>Ach:</b> {metrics_excl['ytd_ach']:.1f}%</p>
@@ -450,16 +450,20 @@ with tab1:
     total_proj_incl = total_proj_excl + pd_realized_until_aug + pd_forecast_manual
     target_incl = target_excl + df[df["Categori Produk"].isin(penyaluran_cats)]["Target Tahun Ini"].sum()
     ach_incl = (total_proj_incl/target_incl*100) if target_incl>0 else 0
+    
 
     # --- DISPLAY ---
     st.markdown(f"""
         <div style="background-color:#1c2d5a;padding:15px;border-radius:10px;
         color:white;font-size:20px;font-weight:bold;text-align:center;margin-top:20px;">
-            📈 Projected Revenue (2025): {total_proj_excl:,.0f}<br>
-            🎯 Projected Achievement (2025): {ach_excl:.1f}%<br><br>
-            📈 Projected Revenue include Penyaluran Dana (2025): {total_proj_incl:,.0f}<br>
-            🎯 Projected Achievement include Penyaluran Dana (2025): {ach_incl:.1f}%<br>
-            dengan perhitungan manual Penyaluran Dana sebesar {pd_forecast_manual:,.0f} M
+            📈 Projected Revenue (2025): <br>
+                {total_proj_excl:,.0f}<br>
+            🎯 Projected Achievement (2025): <br>
+                {ach_excl:.1f}%<br><br>
+            📈 Projected Revenue (include Penyaluran Dana) (2025): <br>
+              {total_proj_incl:,.0f}<br>
+            🎯 Projected Achievement include Penyaluran Dana (2025): <br>
+              {ach_incl:.1f}%
         </div>
     """, unsafe_allow_html=True)
 
@@ -1047,6 +1051,78 @@ with tab2:
                 st.session_state.show_form = False
                 st.rerun()
 
+with tab3:
+    import streamlit as st
+    from groq import Groq
+
+    # Initialize Groq client
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+    st.header("🤖 AI Assistant – Performance & Tasks")
+
+    # --- Load latest context ---
+    perf_data = load_performance_data()   # your helper to summarize by segment
+    tasks = tasks_df                      # your DB function
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # Display chat history
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    # Input box
+    if prompt := st.chat_input("Ask about performance or tasks..."):
+        # Show user message
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # --- Build compact context to avoid hitting Groq 413 error ---
+        # Summarize performance
+        perf_summary = perf_data.describe().to_string()
+        perf_head = perf_data.to_string(index=False)
+
+        context = f"""
+        === PERFORMANCE SUMMARY (2025) ===
+        Key stats:
+        {perf_summary}
+
+        Sample (top 5 rows):
+        {perf_head}
+
+        === TASK SUMMARY ===
+        By status:
+        {task_summary}
+
+        Sample (top 10 tasks):
+        {task_head}
+        """
+
+        print("🔍 Context for LLM:", context)  # Debugging output
+
+        # --- Call Groq LLM ---
+        response = client.chat.completions.create(
+            model="groq/compound",  # fast + cheap, adjust if needed
+            messages=[
+                {"role": "system", "content": """
+                You are an AI assistant for financial and operational reporting.
+                You can analyze performance data and task lists.
+                Provide clear answers, highlight risks/opportunities,
+                and make recommendations if useful.
+                Be concise.
+                """},
+                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {prompt}"}
+            ]
+        )
+
+        answer = response.choices[0].message.content
+
+        # Show assistant message
+        st.session_state.messages.append({"role": "assistant", "content": answer})
+        with st.chat_message("assistant"):
+            st.markdown(answer)
 
 
 
