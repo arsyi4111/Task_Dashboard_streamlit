@@ -1055,6 +1055,7 @@ with tab3:
     import streamlit as st
     from groq import Groq
 
+
     # Initialize Groq client
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
@@ -1062,7 +1063,6 @@ with tab3:
 
     # --- Load latest context ---
     perf_data = load_performance_data()   # your helper to summarize by segment
-    tasks = tasks_df                      # your DB function
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -1073,7 +1073,7 @@ with tab3:
             st.markdown(msg["content"])
 
     # Input box
-    if prompt := st.chat_input("Ask about performance or tasks..."):
+    if prompt := st.chat_input("Ask about performance . . . "):
         # Show user message
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
@@ -1088,20 +1088,7 @@ with tab3:
         === PERFORMANCE SUMMARY (2025) ===
         Key stats:
         {perf_summary}
-
-        Sample (top 5 rows):
-        {perf_head}
-
-        === TASK SUMMARY ===
-        By status:
-        {task_summary}
-
-        Sample (top 10 tasks):
-        {task_head}
         """
-
-        print("🔍 Context for LLM:", context)  # Debugging output
-
         # --- Call Groq LLM ---
         response = client.chat.completions.create(
             model="groq/compound",  # fast + cheap, adjust if needed
