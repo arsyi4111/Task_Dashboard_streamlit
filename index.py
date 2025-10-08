@@ -1056,60 +1056,76 @@ with tab3:
     from groq import Groq
 
 
-    # Initialize Groq client
-    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+import streamlit as st
+from groq import Groq
 
-    st.header("🤖 AI Assistant – Performance & Tasks")
 
-    # --- Load latest context ---
-    perf_data = load_performance_data()   # your helper to summarize by segment
+# Initialize Groq client
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+st.header("🤖 AI Assistant – Performance & Tasks")
 
-    # Display chat history
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+# --- Load latest context ---
+perf_data = pd.read_csv("data/performance/performance_all.csv")   # your helper to summarize by segment
 
-    # Input box
-    if prompt := st.chat_input("Ask about performance . . . "):
-        # Show user message
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-        # --- Build compact context to avoid hitting Groq 413 error ---
-        # Summarize performance
-        perf_summary = perf_data.describe().to_string()
-        perf_head = perf_data.to_string(index=False)
+# Display chat history
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-        context = f"""
-        === PERFORMANCE SUMMARY (2025) ===
-        Key stats:
-        {perf_summary}
-        """
-        # --- Call Groq LLM ---
-        response = client.chat.completions.create(
-            model="groq/compound",  # fast + cheap, adjust if needed
-            messages=[
-                {"role": "system", "content": """
-                You are an AI assistant for financial and operational reporting.
-                You can analyze performance data and task lists.
-                Provide clear answers, highlight risks/opportunities,
-                and make recommendations if useful.
-                Be concise.
-                """},
-                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {prompt}"}
-            ]
-        )
+# Input box
+if prompt := st.chat_input("Ask about performance . . . "):
+    # Show user message
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    context = f"""
+    Full performance data (CSV format):
+    {perf_data}
 
-        answer = response.choices[0].message.content
+    Column definitions:
+    - 'bulan' → month number
+    - 'Categori Produk' → product category
+    - 'Kinerja 2024' → 2024 revenue
+    - 'Kinerja 2025' → 2025 revenue
+    - 'Target Tahun Ini' → 2025 target
+    - 'growth' → growth vs 2024
+    - 'achievement' → achievement vs target
+    """
 
-        # Show assistant message
-        st.session_state.messages.append({"role": "assistant", "content": answer})
-        with st.chat_message("assistant"):
-            st.markdown(answer)
+    # --- Call Groq LLM ---
+    response = client.chat.completions.create(
+        model="groq/compound",  # fast + cheap, adjust if needed
+        messages=[
+            {
+                "role": "system",
+                "content": """
+                You are an AI assistant for financial and operational reporting at PT Pos Indonesia.
+                You analyze performance data and task lists.
+                - Interpret 'bulan' as month.
+                - Interpret 'Categori Produk' as product name or type.
+                - 'Kinerja 2024' and 'Kinerja 2025' are revenue performance by year.
+                - 'Target Tahun Ini' is the current-year revenue target.
+                - 'growth' shows revenue growth.
+                - 'achievement' shows target achievement.
+                Provide clear insights, note trends, highlight risks/opportunities,
+                and give recommendations where useful.
+                Be concise and professional.
+                """
+            },
+            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {prompt}"}
+        ]
+    )
+
+    answer = response.choices[0].message.content
+
+    # Show assistant message
+    st.session_state.messages.append({"role": "assistant", "content": answer})
+    with st.chat_message("assistant"):
+        st.markdown(answer)
 
 
 
