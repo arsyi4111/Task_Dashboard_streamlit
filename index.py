@@ -241,7 +241,7 @@ with tab1:
     penyaluran_cats = [
         "17. PENYALURAN DANA NASIONAL",
         "18. PENYALURAN DANA DAERAH",
-        "19. PENYALURAN DANA KORPORASI"
+        "19. PENYALURAN DANA KORPORAT"
     ]
 
     df_excl = df[~df["Categori Produk"].isin(penyaluran_cats)].copy()
@@ -444,18 +444,18 @@ with tab1:
     # --- Determine total unachieved target (Jan–Sep) ---
     achieved_until_sep = monthly_2025.loc[monthly_2025["bulan"] <= 9, "Kinerja"].sum()
     target_until_sep = monthly_2025.loc[monthly_2025["bulan"] <= 9, "Target"].sum()
-    excess_target = target_until_sep - achieved_until_sep  # this is how much is missing
+    excess_target = target_until_sep - achieved_until_sep  # unachieved amount
 
     # --- Calculate month weights from original target (Oct–Dec) ---
-    future_months_mask = monthly_2025["bulan"] >= 10
+    future_mask = monthly_2025["bulan"] >= 10
     month_weights = (
-        monthly_2025.loc[future_months_mask, "Target"] /
-        monthly_2025.loc[future_months_mask, "Target"].sum()
+        monthly_2025.loc[future_mask, "Target"] /
+        monthly_2025.loc[future_mask, "Target"].sum()
     )
 
     # --- Redistribute unachieved target proportionally to Oct–Dec ---
-    monthly_2025.loc[future_months_mask, "Target_Redistributed"] = (
-        monthly_2025.loc[future_months_mask, "Target"] +
+    monthly_2025.loc[future_mask, "Target_Redistributed"] = (
+        monthly_2025.loc[future_mask, "Target"] +
         month_weights.values * excess_target
     )
 
@@ -464,16 +464,23 @@ with tab1:
 
     # --- Prepare data for plotting (Oct–Dec only) ---
     oct_dec = monthly_2025[monthly_2025["bulan"] >= 10].copy()
-    plot_octdec = oct_dec.melt(
-        id_vars=["bulan_name"],
-        value_vars=["Kinerja", "Target_Redistributed", "Forecast"],
-        var_name="Kategori", value_name="Nilai"
-    )
+
+    # Calculate per-month increase and month weight (as %)
+    oct_dec["Increase"] = oct_dec["Target_Redistributed"] - oct_dec["Target"]
+    oct_dec["Weight_pct"] = month_weights.values * 100
 
     # --- Create layout: 2 columns for plot and summary ---
     col_plot, col_summary = st.columns([2, 1])
 
     with col_plot:
+        # Melt for consistent grouping
+        plot_octdec = oct_dec.melt(
+            id_vars=["bulan_name"],
+            value_vars=["Kinerja", "Target_Redistributed", "Forecast"],
+            var_name="Kategori", value_name="Nilai"
+        )
+
+        # --- Base grouped bar chart ---
         fig2 = px.bar(
             plot_octdec,
             x="bulan_name",
@@ -482,6 +489,18 @@ with tab1:
             barmode="group",
             text_auto=".2s"
         )
+
+        # --- Add text labels for each month's redistribution weight ---
+        for i, row in oct_dec.iterrows():
+            fig2.add_annotation(
+                x=row["bulan_name"],
+                y=row["Target_Redistributed"],
+                text=f"+{row['Increase']:,.0f}M<br>Weight: {row['Weight_pct']:.1f}%",
+                showarrow=False,
+                font=dict(size=12, color="green"),
+                yanchor="bottom"
+            )
+
         fig2.update_yaxes(title="Revenue (in Millions)", tickformat=".2s")
         fig2.update_xaxes(title="Month", tickangle=-45)
         fig2.update_layout(
@@ -500,7 +519,7 @@ with tab1:
         # --- DISPLAY SUMMARY ---
         st.markdown(f"""
             <div style="
-                background-color:#143d33;
+                background-color:#1c2d5a;
                 padding:15px;
                 border-radius:10px;
                 color:white;
@@ -508,9 +527,9 @@ with tab1:
                 font-weight:bold;
                 text-align:left;
                 margin-top:20px;">
-                📆 Jan–Sep Underachievement: <br>
+                📆 Jan–Sep Underachievement:<br>
                 {excess_target:,.0f} M<br><br>
-                🎯 Oct–Dec Redistributed Target: <br>
+                🎯 Oct–Dec Redistributed Target:<br>
                 {redistributed_sum:,.0f} M<br>
                 <span style="font-size:16px;">
                     vs Original: {original_sum_octdec:,.0f} ({increase_pct:+.1f}%)
