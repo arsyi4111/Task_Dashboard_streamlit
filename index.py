@@ -13,6 +13,9 @@ from sklearn.linear_model import LinearRegression
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 import statsmodels.api as sm
 import numpy as np
+from groq import Groq
+from streamlit.components.v1 import html as st_html
+
 
 st.set_page_config(page_title="Team Activity Dashboard", layout="wide")
 
@@ -316,7 +319,7 @@ with tab1:
         st.markdown(f"""
             <div class='metric-box'>
                 <h4>📅 Monthly Performance</h4>
-                <p><b>last update: 5 Oktober 2025</b></p>
+                <p><b>last update: 10 Oktober 2025</b></p>
                 <p><b>Total:</b> {metrics_excl['mtd_total']:,.0f}</p>
                 <p><b>Target:</b> {metrics_excl['mtd_target']:,.0f}</p>
                 <p><b>Ach:</b> {metrics_excl['mtd_ach']:.1f}%</p>
@@ -339,7 +342,7 @@ with tab1:
         st.markdown(f"""
             <div class='metric-box'>
                 <h4>📊 FY Performance</h4>
-                <p><b>last update: 5 Oktober 2025</b></p>
+                <p><b>last update: 10 Oktober 2025</b></p>
                 <p><b>Total:</b> {metrics_excl['ytd_total']:,.0f}</p>
                 <p><b>Target:</b> {metrics_excl['ytd_target']:,.0f}</p>
                 <p><b>Ach:</b> {metrics_excl['ytd_ach']:.1f}%</p>
@@ -427,6 +430,93 @@ with tab1:
         line=dict(color="black", dash="dash")
     ))
     st.plotly_chart(fig, use_container_width=True)
+
+
+    # ==============================
+    # SECOND PLOT — Redistributed Target (Oct–Dec)
+    # ==============================
+    st.subheader("🎯 Redistributed Target (October–December 2025)")
+
+    # --- Calculate monthly achievement until September ---
+    monthly_2025 = timeline_excl[timeline_excl["year"] == 2025].copy()
+    monthly_2025["Ach"] = monthly_2025["Kinerja"] / monthly_2025["Target"]
+
+    # --- Determine total unachieved target (Jan–Sep) ---
+    achieved_until_sep = monthly_2025.loc[monthly_2025["bulan"] <= 9, "Kinerja"].sum()
+    target_until_sep = monthly_2025.loc[monthly_2025["bulan"] <= 9, "Target"].sum()
+    excess_target = target_until_sep - achieved_until_sep  # this is how much is missing
+
+    # --- Calculate month weights from original target (Oct–Dec) ---
+    future_months_mask = monthly_2025["bulan"] >= 10
+    month_weights = (
+        monthly_2025.loc[future_months_mask, "Target"] /
+        monthly_2025.loc[future_months_mask, "Target"].sum()
+    )
+
+    # --- Redistribute unachieved target proportionally to Oct–Dec ---
+    monthly_2025.loc[future_months_mask, "Target_Redistributed"] = (
+        monthly_2025.loc[future_months_mask, "Target"] +
+        month_weights.values * excess_target
+    )
+
+    # --- Fill earlier months with original target ---
+    monthly_2025["Target_Redistributed"] = monthly_2025["Target_Redistributed"].fillna(monthly_2025["Target"])
+
+    # --- Prepare data for plotting (Oct–Dec only) ---
+    oct_dec = monthly_2025[monthly_2025["bulan"] >= 10].copy()
+    plot_octdec = oct_dec.melt(
+        id_vars=["bulan_name"],
+        value_vars=["Kinerja", "Target_Redistributed", "Forecast"],
+        var_name="Kategori", value_name="Nilai"
+    )
+
+    # --- Create layout: 2 columns for plot and summary ---
+    col_plot, col_summary = st.columns([2, 1])
+
+    with col_plot:
+        fig2 = px.bar(
+            plot_octdec,
+            x="bulan_name",
+            y="Nilai",
+            color="Kategori",
+            barmode="group",
+            text_auto=".2s"
+        )
+        fig2.update_yaxes(title="Revenue (in Millions)", tickformat=".2s")
+        fig2.update_xaxes(title="Month", tickangle=-45)
+        fig2.update_layout(
+            title="Redistributed Target vs Performance & Forecast (Oct–Dec 2025)",
+            legend_title="Kategori",
+            bargap=0.25,
+            title_font=dict(size=18)
+        )
+        st.plotly_chart(fig2, use_container_width=True)
+
+    with col_summary:
+        redistributed_sum = oct_dec["Target_Redistributed"].sum()
+        original_sum_octdec = oct_dec["Target"].sum()
+        increase_pct = (redistributed_sum / original_sum_octdec - 1) * 100 if original_sum_octdec > 0 else 0
+
+        # --- DISPLAY SUMMARY ---
+        st.markdown(f"""
+            <div style="
+                background-color:#143d33;
+                padding:15px;
+                border-radius:10px;
+                color:white;
+                font-size:18px;
+                font-weight:bold;
+                text-align:left;
+                margin-top:20px;">
+                📆 Jan–Sep Underachievement: <br>
+                {excess_target:,.0f} M<br><br>
+                🎯 Oct–Dec Redistributed Target: <br>
+                {redistributed_sum:,.0f} M<br>
+                <span style="font-size:16px;">
+                    vs Original: {original_sum_octdec:,.0f} ({increase_pct:+.1f}%)
+                </span>
+            </div>
+        """, unsafe_allow_html=True)
 
     # ==============================
     # SUMMARY (Projected)
@@ -1052,80 +1142,73 @@ with tab2:
                 st.rerun()
 
 with tab3:
-    import streamlit as st
-    from groq import Groq
 
+    # Initialize Groq client
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-import streamlit as st
-from groq import Groq
+    st.header("🤖 AI Assistant – Performance & Tasks")
 
+    # --- Load latest context ---
+    perf_data = pd.read_csv("data/performance/performance_all.csv")   # your helper to summarize by segment
 
-# Initialize Groq client
-client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-st.header("🤖 AI Assistant – Performance & Tasks")
+    # Display chat history
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-# --- Load latest context ---
-perf_data = pd.read_csv("data/performance/performance_all.csv")   # your helper to summarize by segment
+    # Input box
+    if prompt := st.chat_input("Ask about performance . . . "):
+        # Show user message
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        context = f"""
+        Full performance data (CSV format):
+        {perf_data}
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+        Column definitions:
+        - 'bulan' → month number
+        - 'Categori Produk' → product category
+        - 'Kinerja 2024' → 2024 revenue
+        - 'Kinerja 2025' → 2025 revenue
+        - 'Target Tahun Ini' → 2025 target
+        - 'growth' → growth vs 2024
+        - 'achievement' → achievement vs target
+        """
 
-# Display chat history
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+        # --- Call Groq LLM ---
+        response = client.chat.completions.create(
+            model="groq/compound",  # fast + cheap, adjust if needed
+            messages=[
+                {
+                    "role": "system",
+                    "content": """
+                    You are an AI assistant for financial and operational reporting at PT Pos Indonesia.
+                    You analyze performance data and task lists.
+                    - Interpret 'bulan' as month.
+                    - Interpret 'Categori Produk' as product name or type.
+                    - 'Kinerja 2024' and 'Kinerja 2025' are revenue performance by year.
+                    - 'Target Tahun Ini' is the current-year revenue target.
+                    - 'growth' shows revenue growth.
+                    - 'achievement' shows target achievement.
+                    Provide clear insights, note trends, highlight risks/opportunities,
+                    and give recommendations where useful.
+                    Be concise and professional.
+                    """
+                },
+                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {prompt}"}
+            ]
+        )
 
-# Input box
-if prompt := st.chat_input("Ask about performance . . . "):
-    # Show user message
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-    context = f"""
-    Full performance data (CSV format):
-    {perf_data}
+        answer = response.choices[0].message.content
 
-    Column definitions:
-    - 'bulan' → month number
-    - 'Categori Produk' → product category
-    - 'Kinerja 2024' → 2024 revenue
-    - 'Kinerja 2025' → 2025 revenue
-    - 'Target Tahun Ini' → 2025 target
-    - 'growth' → growth vs 2024
-    - 'achievement' → achievement vs target
-    """
-
-    # --- Call Groq LLM ---
-    response = client.chat.completions.create(
-        model="groq/compound",  # fast + cheap, adjust if needed
-        messages=[
-            {
-                "role": "system",
-                "content": """
-                You are an AI assistant for financial and operational reporting at PT Pos Indonesia.
-                You analyze performance data and task lists.
-                - Interpret 'bulan' as month.
-                - Interpret 'Categori Produk' as product name or type.
-                - 'Kinerja 2024' and 'Kinerja 2025' are revenue performance by year.
-                - 'Target Tahun Ini' is the current-year revenue target.
-                - 'growth' shows revenue growth.
-                - 'achievement' shows target achievement.
-                Provide clear insights, note trends, highlight risks/opportunities,
-                and give recommendations where useful.
-                Be concise and professional.
-                """
-            },
-            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {prompt}"}
-        ]
-    )
-
-    answer = response.choices[0].message.content
-
-    # Show assistant message
-    st.session_state.messages.append({"role": "assistant", "content": answer})
-    with st.chat_message("assistant"):
-        st.markdown(answer)
+        # Show assistant message
+        st.session_state.messages.append({"role": "assistant", "content": answer})
+        with st.chat_message("assistant"):
+            st.markdown(answer)
 
 
 
